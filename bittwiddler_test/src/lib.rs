@@ -17,10 +17,14 @@ impl<const N: usize> MustBeABoolArrayConstGenericsWorkaround for [bool; N] {
 }
 
 #[allow(private_bounds)]
-pub trait BitProperty<T: MustBeABoolArrayConstGenericsWorkaround, A: FieldAccessor> {
+pub trait BitProperty<T: MustBeABoolArrayConstGenericsWorkaround> {
     fn from_bits(bits: &T) -> Self;
     fn to_bits(&self) -> T;
-
+}
+#[allow(private_bounds)]
+pub trait BitPropertyWithStringConv<T: MustBeABoolArrayConstGenericsWorkaround, A: FieldAccessor>:
+    BitProperty<T>
+{
     fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
         let bits = self.to_bits();
         let mut s = String::with_capacity(T::NBITS);
@@ -52,7 +56,7 @@ pub trait BitProperty<T: MustBeABoolArrayConstGenericsWorkaround, A: FieldAccess
     }
 }
 
-impl<A: FieldAccessor> BitProperty<[bool; 1], A> for bool {
+impl BitProperty<[bool; 1]> for bool {
     fn from_bits(bits: &[bool; 1]) -> Self {
         bits[0]
     }
@@ -61,10 +65,11 @@ impl<A: FieldAccessor> BitProperty<[bool; 1], A> for bool {
         [*self]
     }
 }
+impl<A: FieldAccessor> BitPropertyWithStringConv<[bool; 1], A> for bool {}
 
 macro_rules! impl_bit_prop_for_int {
     ($nbits:expr, $int_ty:ty) => {
-        impl<A: FieldAccessor> BitProperty<[bool; $nbits], A> for $int_ty {
+        impl BitProperty<[bool; $nbits]> for $int_ty {
             fn from_bits(bits: &[bool; $nbits]) -> Self {
                 let mut ret = 0;
                 for i in 0..$nbits {
@@ -85,6 +90,7 @@ macro_rules! impl_bit_prop_for_int {
                 ret
             }
         }
+        impl<A: FieldAccessor> BitPropertyWithStringConv<[bool; $nbits], A> for $int_ty {}
     };
 }
 
@@ -375,7 +381,7 @@ impl ToString for TestBitstream {
 pub trait FieldAccessor {
     #[allow(private_bounds)]
     type BoolArray: MustBeABoolArrayConstGenericsWorkaround;
-    type Output: BitProperty<Self::BoolArray, Self>
+    type Output: BitPropertyWithStringConv<Self::BoolArray, Self>
     where
         Self: Sized;
 
@@ -458,6 +464,9 @@ impl Tile {
     pub fn property_three(&self) -> TilePropertyThreeAccessor {
         TilePropertyThreeAccessor { tile: self.clone() }
     }
+    pub fn property_four(&self) -> TilePropertyFourAccessor {
+        TilePropertyFourAccessor { tile: self.clone() }
+    }
 }
 
 pub struct TilePropertyOneAccessor {
@@ -489,16 +498,17 @@ impl FieldAccessor for TilePropertyTwoAccessor {
     }
 }
 
-pub struct TilePropertyThree(bool);
-impl BitProperty<[bool; 1], TilePropertyThreeAccessor> for TilePropertyThree {
+pub struct CustomBool(bool);
+impl BitProperty<[bool; 1]> for CustomBool {
     fn from_bits(bits: &[bool; 1]) -> Self {
-        TilePropertyThree(bits[0])
+        CustomBool(bits[0])
     }
 
     fn to_bits(&self) -> [bool; 1] {
         [self.0]
     }
-
+}
+impl BitPropertyWithStringConv<[bool; 1], TilePropertyThreeAccessor> for CustomBool {
     fn to_string(&self, accessor: &TilePropertyThreeAccessor) -> Cow<'static, str> {
         if !self.0 {
             "nonono".into()
@@ -515,15 +525,45 @@ impl BitProperty<[bool; 1], TilePropertyThreeAccessor> for TilePropertyThree {
         }
     }
 }
+impl BitPropertyWithStringConv<[bool; 1], TilePropertyFourAccessor> for CustomBool {
+    fn to_string(&self, accessor: &TilePropertyFourAccessor) -> Cow<'static, str> {
+        if !self.0 {
+            "lalala".into()
+        } else {
+            format!("[{}, {}]", accessor.tile.x, accessor.tile.y).into()
+        }
+    }
+
+    fn from_string(s: &str, _accessor: &TilePropertyFourAccessor) -> Self {
+        if s == "lalala" {
+            Self(false)
+        } else {
+            Self(true)
+        }
+    }
+}
 pub struct TilePropertyThreeAccessor {
     tile: Tile,
 }
 impl FieldAccessor for TilePropertyThreeAccessor {
     type BoolArray = [bool; 1];
-    type Output = TilePropertyThree;
+    type Output = CustomBool;
 
     fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
         let x = self.tile.x as usize * 4;
+        let y = self.tile.y as usize * 4 + 3;
+        (x, y)
+    }
+}
+pub struct TilePropertyFourAccessor {
+    tile: Tile,
+}
+impl FieldAccessor for TilePropertyFourAccessor {
+    type BoolArray = [bool; 1];
+    type Output = CustomBool;
+
+    fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
+        let x = self.tile.x as usize * 4 + 1;
         let y = self.tile.y as usize * 4 + 3;
         (x, y)
     }
@@ -542,7 +582,7 @@ mod tests {
             _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _1, _1, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
-            _0, _0, _0, _0,     _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
+            _0, _1, _0, _0,     _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
 
             _0, _0, _0, _0,     _0, _1, _0, _0,     _1, _1, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
@@ -589,6 +629,15 @@ mod tests {
         assert_eq!(
             bitstream.get_as_string(&Tile::tile(1, 0).property_three()),
             "(1, 0)"
+        );
+
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(0, 0).property_four()),
+            "[0, 0]"
+        );
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(1, 0).property_four()),
+            "lalala"
         );
     }
 
