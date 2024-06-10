@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+
+members = ["bittwiddler_test"]
+
+[profile.release]
+debug = true
