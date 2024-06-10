@@ -1,4 +1,7 @@
-use std::mem::{self, MaybeUninit};
+use std::{
+    borrow::Cow,
+    mem::{self, MaybeUninit},
+};
 
 pub struct TestBitstream {
     pub bits: [bool; 256],
@@ -14,22 +17,42 @@ impl<const N: usize> MustBeABoolArrayConstGenericsWorkaround for [bool; N] {
 }
 
 #[allow(private_bounds)]
-pub trait BitProperty<T: MustBeABoolArrayConstGenericsWorkaround> {
+pub trait BitProperty<T: MustBeABoolArrayConstGenericsWorkaround, A: FieldAccessor> {
     fn from_bits(bits: &T) -> Self;
     fn to_bits(&self) -> T;
+
+    fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
+        let bits = self.to_bits();
+        let mut s = String::with_capacity(T::NBITS);
+        for i in (0..T::NBITS).rev() {
+            if bits.as_ref()[i] {
+                s.push('1');
+            } else {
+                s.push('0');
+            }
+        }
+        s.into()
+    }
+    fn from_string(s: &str, _accessor: &A) -> Self
+    where
+        Self: Sized,
+    {
+        let mut bits: T::MaybeUninitTy = unsafe { MaybeUninit::uninit().assume_init() };
+        for (i, c) in s.chars().rev().enumerate() {
+            if c == '1' {
+                bits.as_mut()[i].write(true);
+            } else if c == '0' {
+                bits.as_mut()[i].write(false);
+            } else {
+                unreachable!()
+            }
+        }
+        let bits = unsafe { mem::transmute_copy::<_, T>(&bits) };
+        Self::from_bits(&bits)
+    }
 }
 
-impl<T: Default> BitProperty<[bool; 0]> for T {
-    fn from_bits(_: &[bool; 0]) -> Self {
-        Self::default()
-    }
-
-    fn to_bits(&self) -> [bool; 0] {
-        []
-    }
-}
-
-impl BitProperty<[bool; 1]> for bool {
+impl<A: FieldAccessor> BitProperty<[bool; 1], A> for bool {
     fn from_bits(bits: &[bool; 1]) -> Self {
         bits[0]
     }
@@ -41,7 +64,7 @@ impl BitProperty<[bool; 1]> for bool {
 
 macro_rules! impl_bit_prop_for_int {
     ($nbits:expr, $int_ty:ty) => {
-        impl BitProperty<[bool; $nbits]> for $int_ty {
+        impl<A: FieldAccessor> BitProperty<[bool; $nbits], A> for $int_ty {
             fn from_bits(bits: &[bool; $nbits]) -> Self {
                 let mut ret = 0;
                 for i in 0..$nbits {
@@ -352,11 +375,16 @@ impl ToString for TestBitstream {
 pub trait FieldAccessor {
     #[allow(private_bounds)]
     type BoolArray: MustBeABoolArrayConstGenericsWorkaround;
-    type Output: BitProperty<Self::BoolArray>;
+    type Output: BitProperty<Self::BoolArray, Self>
+    where
+        Self: Sized;
 
     fn get_bit_pos(&self, biti: usize) -> (usize, usize);
 
-    fn get(&self, bitstream: &impl BitArray) -> Self::Output {
+    fn get(&self, bitstream: &impl BitArray) -> Self::Output
+    where
+        Self: Sized,
+    {
         let mut bits: <Self::BoolArray as MustBeABoolArrayConstGenericsWorkaround>::MaybeUninitTy =
             unsafe { MaybeUninit::uninit().assume_init() };
         for biti in 0..Self::BoolArray::NBITS {
@@ -366,12 +394,30 @@ pub trait FieldAccessor {
         let bits = unsafe { mem::transmute_copy::<_, Self::BoolArray>(&bits) };
         Self::Output::from_bits(&bits)
     }
-    fn set(&self, bitstream: &mut impl BitArray, val: Self::Output) {
+    fn set(&self, bitstream: &mut impl BitArray, val: Self::Output)
+    where
+        Self: Sized,
+    {
         let bits = val.to_bits();
         for biti in 0..Self::BoolArray::NBITS {
             let (x, y) = self.get_bit_pos(biti);
             bitstream.set(x, y, bits.as_ref()[biti]);
         }
+    }
+
+    fn get_as_string(&self, bitstream: &impl BitArray) -> Cow<'static, str>
+    where
+        Self: Sized,
+    {
+        let val = self.get(bitstream);
+        val.to_string(self)
+    }
+    fn set_from_string(&self, bitstream: &mut impl BitArray, val: &str)
+    where
+        Self: Sized,
+    {
+        let val = Self::Output::from_string(val, self);
+        self.set(bitstream, val);
     }
 }
 
@@ -381,6 +427,13 @@ impl TestBitstream {
     }
     pub fn set_field<A: FieldAccessor>(&mut self, accessor: &A, val: A::Output) {
         accessor.set(self, val);
+    }
+
+    pub fn get_as_string<A: FieldAccessor>(&self, accessor: &A) -> Cow<'static, str> {
+        accessor.get_as_string(self)
+    }
+    pub fn set_from_string<A: FieldAccessor>(&mut self, accessor: &A, val: &str) {
+        accessor.set_from_string(self, val);
     }
 }
 
@@ -401,6 +454,9 @@ impl Tile {
             tile: self.clone(),
             n,
         }
+    }
+    pub fn property_three(&self) -> TilePropertyThreeAccessor {
+        TilePropertyThreeAccessor { tile: self.clone() }
     }
 }
 
@@ -433,6 +489,46 @@ impl FieldAccessor for TilePropertyTwoAccessor {
     }
 }
 
+pub struct TilePropertyThree(bool);
+impl BitProperty<[bool; 1], TilePropertyThreeAccessor> for TilePropertyThree {
+    fn from_bits(bits: &[bool; 1]) -> Self {
+        TilePropertyThree(bits[0])
+    }
+
+    fn to_bits(&self) -> [bool; 1] {
+        [self.0]
+    }
+
+    fn to_string(&self, accessor: &TilePropertyThreeAccessor) -> Cow<'static, str> {
+        if !self.0 {
+            "nonono".into()
+        } else {
+            format!("({}, {})", accessor.tile.x, accessor.tile.y).into()
+        }
+    }
+
+    fn from_string(s: &str, _accessor: &TilePropertyThreeAccessor) -> Self {
+        if s == "nonono" {
+            Self(false)
+        } else {
+            Self(true)
+        }
+    }
+}
+pub struct TilePropertyThreeAccessor {
+    tile: Tile,
+}
+impl FieldAccessor for TilePropertyThreeAccessor {
+    type BoolArray = [bool; 1];
+    type Output = TilePropertyThree;
+
+    fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
+        let x = self.tile.x as usize * 4;
+        let y = self.tile.y as usize * 4 + 3;
+        (x, y)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -446,7 +542,7 @@ mod tests {
             _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _1, _1, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
-            _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
+            _0, _0, _0, _0,     _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
 
             _0, _0, _0, _0,     _0, _1, _0, _0,     _1, _1, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
@@ -472,12 +568,35 @@ mod tests {
         assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(1)), _1);
         assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(2)), _1);
         assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(3)), _0);
+
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(0, 0).property_one()),
+            "00000001"
+        );
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(1, 1).property_one()),
+            "00000010"
+        );
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(2, 1).property_one()),
+            "00000011"
+        );
+
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(0, 0).property_three()),
+            "nonono"
+        );
+        assert_eq!(
+            bitstream.get_as_string(&Tile::tile(1, 0).property_three()),
+            "(1, 0)"
+        );
     }
 
     #[test]
     fn test_set() {
         let mut bitstream = TestBitstream { bits: [false; 256] };
         bitstream.set_field(&Tile::tile(0, 0).property_one(), 0xa5);
+        bitstream.set_from_string(&Tile::tile(1, 1).property_one(), "01011010");
 
         let bit_str = bitstream.to_string();
         print!("{}", bit_str);
