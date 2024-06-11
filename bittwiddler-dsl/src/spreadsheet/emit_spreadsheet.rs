@@ -74,7 +74,6 @@ pub fn emit(tile: &Tile) -> Result<TokenStream, EmitError> {
             }
         }
     }
-    dbg!(&property_info);
 
     // loop over everything again, writing down the bit positions
     let mut property_coords = HashMap::new();
@@ -94,7 +93,6 @@ pub fn emit(tile: &Tile) -> Result<TokenStream, EmitError> {
             }
         }
     }
-    dbg!(&property_coords);
 
     // emit the code
     let output_coords_code = property_coords
