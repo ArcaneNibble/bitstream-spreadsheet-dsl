@@ -6,9 +6,7 @@
 
 pub mod prelude;
 
-// fixme
-pub trait FieldAccessor {}
-
+mod accessor;
 mod bit_access;
 mod property;
 mod workarounds;

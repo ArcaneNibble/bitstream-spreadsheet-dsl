@@ -1,7 +1,4 @@
-use std::{
-    borrow::Cow,
-    mem::{self, MaybeUninit},
-};
+use std::borrow::Cow;
 
 use bittwiddler_core::prelude::*;
 use itertools::Itertools;
@@ -37,67 +34,30 @@ impl ToString for TestBitstream {
     }
 }
 
-pub trait FieldAccessor: ScriptingThingWithArgs {
-    #[allow(private_bounds)]
-    type BoolArray: MustBeABoolArrayConstGenericsWorkaround;
-    type Output: PropertyLeafWithStringConv<Self::BoolArray, Self>
-    where
-        Self: Sized;
-
-    fn get_bit_pos(&self, biti: usize) -> (usize, usize);
-
-    fn get(&self, bitstream: &(impl BitArray + ?Sized)) -> Self::Output
-    where
-        Self: Sized,
-    {
-        let mut bits: <Self::BoolArray as MustBeABoolArrayConstGenericsWorkaround>::MaybeUninitTy =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for biti in 0..Self::BoolArray::NBITS {
-            let (x, y) = self.get_bit_pos(biti);
-            bits.as_mut()[biti].write(bitstream.get(x, y));
-        }
-        let bits = unsafe { mem::transmute_copy::<_, Self::BoolArray>(&bits) };
-        Self::Output::from_bits(&bits)
-    }
-    fn set(&self, bitstream: &mut (impl BitArray + ?Sized), val: Self::Output)
-    where
-        Self: Sized,
-    {
-        let bits = val.to_bits();
-        for biti in 0..Self::BoolArray::NBITS {
-            let (x, y) = self.get_bit_pos(biti);
-            bitstream.set((x, y).into(), bits.as_ref()[biti]);
-        }
-    }
-
-    fn get_as_string(&self, bitstream: &(impl BitArray + ?Sized)) -> Cow<'static, str>
-    where
-        Self: Sized,
-    {
-        let val = self.get(bitstream);
-        val.to_string(self)
-    }
-    fn set_from_string(&self, bitstream: &mut (impl BitArray + ?Sized), val: &str)
-    where
-        Self: Sized,
-    {
-        let val = Self::Output::from_string(val, self);
-        self.set(bitstream, val);
-    }
-}
-
 impl TestBitstream {
-    pub fn get_field<A: FieldAccessor>(&self, accessor: &A) -> A::Output {
+    pub fn get_field<A: PropertyAccessor>(&self, accessor: &A) -> A::Output {
         accessor.get(self)
     }
-    pub fn set_field<A: FieldAccessor>(&mut self, accessor: &A, val: A::Output) {
+    pub fn set_field<A: PropertyAccessor>(&mut self, accessor: &A, val: A::Output) {
         accessor.set(self, val);
     }
 
-    pub fn get_as_string<A: FieldAccessor>(&self, accessor: &A) -> Cow<'static, str> {
+    pub fn get_as_string<A: PropertyAccessor + PropertyAccessorWithStringConv>(
+        &self,
+        accessor: &A,
+    ) -> Cow<'static, str>
+    where
+        A::Output: PropertyLeafWithStringConv<A::BoolArray, A>,
+    {
         accessor.get_as_string(self)
     }
-    pub fn set_from_string<A: FieldAccessor>(&mut self, accessor: &A, val: &str) {
+    pub fn set_from_string<A: PropertyAccessor + PropertyAccessorWithStringConv>(
+        &mut self,
+        accessor: &A,
+        val: &str,
+    ) where
+        A::Output: PropertyLeafWithStringConv<A::BoolArray, A>,
+    {
         accessor.set_from_string(self, val);
     }
 }
@@ -110,11 +70,11 @@ pub trait ScriptingThingWithArgs {
     fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink);
 }
 
-pub trait FieldAccessorDyn: ScriptingThingWithArgs {
+pub trait PropertyAccessorDyn: ScriptingThingWithArgs {
     fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
     fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str);
 }
-impl<A: FieldAccessor> FieldAccessorDyn for Box<A> {
+impl<A: PropertyAccessor> PropertyAccessorDyn for Box<A> {
     fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str> {
         self.get_as_string(bitstream)
     }
@@ -123,7 +83,7 @@ impl<A: FieldAccessor> FieldAccessorDyn for Box<A> {
         self.set_from_string(bitstream, val);
     }
 }
-impl<A: FieldAccessor> ScriptingThingWithArgs for Box<A> {
+impl<A: PropertyAccessor> ScriptingThingWithArgs for Box<A> {
     fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
         A::_scripting_dump_my_args(self, dump)
     }
@@ -133,11 +93,15 @@ pub trait AccessorScriptingMetadata: ScriptingThingWithArgs {
     fn _scripting_fields(&self) -> &'static [&'static str];
     fn _scripting_sublevels(&self) -> &'static [&'static str];
 
-    fn _scripting_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn FieldAccessorDyn>;
+    fn _scripting_construct_field(
+        &self,
+        idx: usize,
+        params: &[&str],
+    ) -> Box<dyn PropertyAccessorDyn>;
     fn _scripting_construct_all_fields<'s>(
         &'s self,
         idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's>;
+    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's>;
 
     fn _scripting_descend_sublevel(
         &self,
@@ -163,14 +127,14 @@ impl AccessorScriptingMetadata for TestBitstream {
         &self,
         _idx: usize,
         _params: &[&str],
-    ) -> Box<dyn FieldAccessorDyn> {
+    ) -> Box<dyn PropertyAccessorDyn> {
         unreachable!()
     }
 
     fn _scripting_construct_all_fields<'s>(
         &'s self,
         _idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's> {
+    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
         unreachable!()
     }
 
@@ -215,7 +179,11 @@ impl AccessorScriptingMetadata for Tile {
         &[]
     }
 
-    fn _scripting_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn FieldAccessorDyn> {
+    fn _scripting_construct_field(
+        &self,
+        idx: usize,
+        params: &[&str],
+    ) -> Box<dyn PropertyAccessorDyn> {
         match idx {
             0 => Box::new(Box::new(self.property_one())),
             1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
@@ -227,21 +195,24 @@ impl AccessorScriptingMetadata for Tile {
     fn _scripting_construct_all_fields<'s>(
         &'s self,
         idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's> {
+    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
         match idx {
             0 => Box::new(
-                [Box::new(Box::new(self.property_one())) as Box<dyn FieldAccessorDyn>].into_iter(),
+                [Box::new(Box::new(self.property_one())) as Box<dyn PropertyAccessorDyn>]
+                    .into_iter(),
             ),
-            1 => Box::new(
-                (0..4)
-                    .map(|n| Box::new(Box::new(self.property_two(n))) as Box<dyn FieldAccessorDyn>),
-            ),
+            1 => {
+                Box::new((0..4).map(|n| {
+                    Box::new(Box::new(self.property_two(n))) as Box<dyn PropertyAccessorDyn>
+                }))
+            }
             2 => Box::new(
-                [Box::new(Box::new(self.property_three())) as Box<dyn FieldAccessorDyn>]
+                [Box::new(Box::new(self.property_three())) as Box<dyn PropertyAccessorDyn>]
                     .into_iter(),
             ),
             3 => Box::new(
-                [Box::new(Box::new(self.property_four())) as Box<dyn FieldAccessorDyn>].into_iter(),
+                [Box::new(Box::new(self.property_four())) as Box<dyn PropertyAccessorDyn>]
+                    .into_iter(),
             ),
             _ => unreachable!(),
         }
@@ -300,14 +271,14 @@ impl Tile {
 pub struct TilePropertyOneAccessor {
     tile: Tile,
 }
-impl FieldAccessor for TilePropertyOneAccessor {
+impl PropertyAccessor for TilePropertyOneAccessor {
     type BoolArray = [bool; 8];
     type Output = u8;
 
-    fn get_bit_pos(&self, biti: usize) -> (usize, usize) {
+    fn get_bit_pos(&self, biti: usize) -> Coordinate {
         let x = self.tile.x as usize * 4 + (biti % 4);
         let y = self.tile.y as usize * 4 + (biti / 4);
-        (x, y)
+        (x, y).into()
     }
 }
 impl ScriptingThingWithArgs for TilePropertyOneAccessor {
@@ -318,14 +289,14 @@ pub struct TilePropertyTwoAccessor {
     tile: Tile,
     n: u8,
 }
-impl FieldAccessor for TilePropertyTwoAccessor {
+impl PropertyAccessor for TilePropertyTwoAccessor {
     type BoolArray = [bool; 1];
     type Output = bool;
 
-    fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
+    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
         let x = self.tile.x as usize * 4 + self.n as usize;
         let y = self.tile.y as usize * 4 + 2;
-        (x, y)
+        (x, y).into()
     }
 }
 impl ScriptingThingWithArgs for TilePropertyTwoAccessor {
@@ -381,14 +352,14 @@ impl PropertyLeafWithStringConv<[bool; 1], TilePropertyFourAccessor> for CustomB
 pub struct TilePropertyThreeAccessor {
     tile: Tile,
 }
-impl FieldAccessor for TilePropertyThreeAccessor {
+impl PropertyAccessor for TilePropertyThreeAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
+    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
         let x = self.tile.x as usize * 4;
         let y = self.tile.y as usize * 4 + 3;
-        (x, y)
+        (x, y).into()
     }
 }
 impl ScriptingThingWithArgs for TilePropertyThreeAccessor {
@@ -397,14 +368,14 @@ impl ScriptingThingWithArgs for TilePropertyThreeAccessor {
 pub struct TilePropertyFourAccessor {
     tile: Tile,
 }
-impl FieldAccessor for TilePropertyFourAccessor {
+impl PropertyAccessor for TilePropertyFourAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, _biti: usize) -> (usize, usize) {
+    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
         let x = self.tile.x as usize * 4 + 1;
         let y = self.tile.y as usize * 4 + 3;
-        (x, y)
+        (x, y).into()
     }
 }
 impl ScriptingThingWithArgs for TilePropertyFourAccessor {

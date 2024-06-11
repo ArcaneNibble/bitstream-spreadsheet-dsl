@@ -13,8 +13,8 @@ use alloc::borrow::Cow;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+use crate::accessor::PropertyAccessor;
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
-use crate::FieldAccessor;
 
 /// Trait for converting between property and array of bool
 #[allow(private_bounds)]
@@ -27,14 +27,16 @@ pub trait PropertyLeaf<T: MustBeABoolArrayConstGenericsWorkaround> {
 
 /// Trait for converting between property and a string
 ///
-/// This is used for creating human-readable files only.
+/// This is used for creating human-readable files.
 ///
 /// The default implementation converts to a string of '0' and '1' characters
 /// corresponding to the raw bits.
 #[cfg(feature = "alloc")]
 #[allow(private_bounds)]
-pub trait PropertyLeafWithStringConv<T: MustBeABoolArrayConstGenericsWorkaround, A: FieldAccessor>:
-    PropertyLeaf<T>
+pub trait PropertyLeafWithStringConv<
+    T: MustBeABoolArrayConstGenericsWorkaround,
+    A: PropertyAccessor + ?Sized,
+>: PropertyLeaf<T>
 {
     fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
         let bits = self.to_bits();
@@ -85,7 +87,7 @@ impl PropertyLeaf<[bool; 1]> for bool {
     }
 }
 #[cfg(feature = "alloc")]
-impl<A: FieldAccessor> PropertyLeafWithStringConv<[bool; 1], A> for bool {}
+impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; 1], A> for bool {}
 
 macro_rules! impl_bit_prop_for_int {
     ($nbits:expr, $int_ty:ty) => {
@@ -111,7 +113,7 @@ macro_rules! impl_bit_prop_for_int {
             }
         }
         #[cfg(feature = "alloc")]
-        impl<A: FieldAccessor> PropertyLeafWithStringConv<[bool; $nbits], A> for $int_ty {}
+        impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; $nbits], A> for $int_ty {}
     };
 }
 
