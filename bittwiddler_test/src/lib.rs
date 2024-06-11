@@ -3,6 +3,8 @@ use std::{
     mem::{self, MaybeUninit},
 };
 
+use itertools::Itertools;
+
 pub struct TestBitstream {
     pub bits: [bool; 256],
 }
@@ -378,7 +380,11 @@ impl ToString for TestBitstream {
     }
 }
 
-pub trait FieldAccessor {
+pub trait FieldAccessorScriptingGetPath {
+    fn _scripting_get_path(&self) -> Cow<'static, str>;
+}
+
+pub trait FieldAccessor: FieldAccessorScriptingGetPath {
     #[allow(private_bounds)]
     type BoolArray: MustBeABoolArrayConstGenericsWorkaround;
     type Output: BitPropertyWithStringConv<Self::BoolArray, Self>
@@ -387,7 +393,7 @@ pub trait FieldAccessor {
 
     fn get_bit_pos(&self, biti: usize) -> (usize, usize);
 
-    fn get(&self, bitstream: &impl BitArray) -> Self::Output
+    fn get(&self, bitstream: &(impl BitArray + ?Sized)) -> Self::Output
     where
         Self: Sized,
     {
@@ -400,7 +406,7 @@ pub trait FieldAccessor {
         let bits = unsafe { mem::transmute_copy::<_, Self::BoolArray>(&bits) };
         Self::Output::from_bits(&bits)
     }
-    fn set(&self, bitstream: &mut impl BitArray, val: Self::Output)
+    fn set(&self, bitstream: &mut (impl BitArray + ?Sized), val: Self::Output)
     where
         Self: Sized,
     {
@@ -411,14 +417,14 @@ pub trait FieldAccessor {
         }
     }
 
-    fn get_as_string(&self, bitstream: &impl BitArray) -> Cow<'static, str>
+    fn get_as_string(&self, bitstream: &(impl BitArray + ?Sized)) -> Cow<'static, str>
     where
         Self: Sized,
     {
         let val = self.get(bitstream);
         val.to_string(self)
     }
-    fn set_from_string(&self, bitstream: &mut impl BitArray, val: &str)
+    fn set_from_string(&self, bitstream: &mut (impl BitArray + ?Sized), val: &str)
     where
         Self: Sized,
     {
@@ -440,6 +446,143 @@ impl TestBitstream {
     }
     pub fn set_from_string<A: FieldAccessor>(&mut self, accessor: &A, val: &str) {
         accessor.set_from_string(self, val);
+    }
+}
+
+pub trait FieldAccessorDyn {
+    fn _scripting_get_path(&self) -> Cow<'static, str>;
+
+    fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
+    fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str);
+}
+impl<A: FieldAccessor> FieldAccessorDyn for Box<A> {
+    fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str> {
+        self.get_as_string(bitstream)
+    }
+
+    fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str) {
+        self.set_from_string(bitstream, val);
+    }
+
+    fn _scripting_get_path(&self) -> Cow<'static, str> {
+        A::_scripting_get_path(self)
+    }
+}
+
+pub trait AccessorScriptingMetadata {
+    fn _scripting_fields(&self) -> &'static [&'static str];
+    fn _scripting_sublevels(&self) -> &'static [&'static str];
+
+    fn _scripting_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn FieldAccessorDyn>;
+    fn _scripting_descend_sublevel(
+        &self,
+        idx: usize,
+        params: &[&str],
+    ) -> Box<dyn AccessorScriptingMetadata>;
+}
+
+// pub struct TestBitstreamAllFieldsIter {
+//     idx: usize,
+// }
+// impl Iterator for TestBitstreamAllFieldsIter {
+//     type Item = Box<dyn FieldAccessorDyn>;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         const STUFF: &'static [&'static dyn FnOnce() -> ()] = &[];
+//         let idx = self.idx;
+//         if idx >= STUFF.len() {
+//             None
+//         } else {
+//             self.idx += 1;
+//             Some(STUFF[idx])
+//         }
+//     }
+// }
+
+impl TestBitstream {
+    fn _scripting_iter_all_stuff() -> impl Iterator<Item = Box<dyn FieldAccessorDyn>> {
+        (0..4)
+            .cartesian_product(0..4)
+            .map(|(y, x)| {
+                [
+                    Box::new(Box::new(Tile::tile(x, y).property_one()))
+                        as Box<dyn FieldAccessorDyn>,
+                    Box::new(Box::new(Tile::tile(x, y).property_three()))
+                        as Box<dyn FieldAccessorDyn>,
+                    Box::new(Box::new(Tile::tile(x, y).property_four()))
+                        as Box<dyn FieldAccessorDyn>,
+                ]
+                .into_iter()
+                .chain((0..4).map(move |n| {
+                    Box::new(Box::new(Tile::tile(x, y).property_two(n)))
+                        as Box<dyn FieldAccessorDyn>
+                }))
+            })
+            .flatten()
+    }
+}
+
+impl AccessorScriptingMetadata for TestBitstream {
+    fn _scripting_fields(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn _scripting_sublevels(&self) -> &'static [&'static str] {
+        &["tile"]
+    }
+
+    fn _scripting_construct_field(
+        &self,
+        _idx: usize,
+        _params: &[&str],
+    ) -> Box<dyn FieldAccessorDyn> {
+        unreachable!()
+    }
+
+    fn _scripting_descend_sublevel(
+        &self,
+        idx: usize,
+        params: &[&str],
+    ) -> Box<dyn AccessorScriptingMetadata> {
+        match idx {
+            0 => Box::new(Tile::tile(
+                params[0].parse().unwrap(),
+                params[1].parse().unwrap(),
+            )),
+            _ => unreachable!(),
+        }
+    }
+}
+impl AccessorScriptingMetadata for Tile {
+    fn _scripting_fields(&self) -> &'static [&'static str] {
+        &[
+            "property_one",
+            "property_two",
+            "property_three",
+            "property_four",
+        ]
+    }
+
+    fn _scripting_sublevels(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn _scripting_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn FieldAccessorDyn> {
+        match idx {
+            0 => Box::new(Box::new(self.property_one())),
+            1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
+            2 => Box::new(Box::new(self.property_three())),
+            3 => Box::new(Box::new(self.property_four())),
+            _ => unreachable!(),
+        }
+    }
+
+    fn _scripting_descend_sublevel(
+        &self,
+        _idx: usize,
+        _params: &[&str],
+    ) -> Box<dyn AccessorScriptingMetadata> {
+        unreachable!()
     }
 }
 
@@ -482,6 +625,11 @@ impl FieldAccessor for TilePropertyOneAccessor {
         (x, y)
     }
 }
+impl FieldAccessorScriptingGetPath for TilePropertyOneAccessor {
+    fn _scripting_get_path(&self) -> Cow<'static, str> {
+        format!("tile[{}, {}].property_one", self.tile.x, self.tile.y).into()
+    }
+}
 
 pub struct TilePropertyTwoAccessor {
     tile: Tile,
@@ -495,6 +643,15 @@ impl FieldAccessor for TilePropertyTwoAccessor {
         let x = self.tile.x as usize * 4 + self.n as usize;
         let y = self.tile.y as usize * 4 + 2;
         (x, y)
+    }
+}
+impl FieldAccessorScriptingGetPath for TilePropertyTwoAccessor {
+    fn _scripting_get_path(&self) -> Cow<'static, str> {
+        format!(
+            "tile[{}, {}].property_two[{}]",
+            self.tile.x, self.tile.y, self.n
+        )
+        .into()
     }
 }
 
@@ -555,6 +712,11 @@ impl FieldAccessor for TilePropertyThreeAccessor {
         (x, y)
     }
 }
+impl FieldAccessorScriptingGetPath for TilePropertyThreeAccessor {
+    fn _scripting_get_path(&self) -> Cow<'static, str> {
+        format!("tile[{}, {}].property_three", self.tile.x, self.tile.y).into()
+    }
+}
 pub struct TilePropertyFourAccessor {
     tile: Tile,
 }
@@ -566,6 +728,11 @@ impl FieldAccessor for TilePropertyFourAccessor {
         let x = self.tile.x as usize * 4 + 1;
         let y = self.tile.y as usize * 4 + 3;
         (x, y)
+    }
+}
+impl FieldAccessorScriptingGetPath for TilePropertyFourAccessor {
+    fn _scripting_get_path(&self) -> Cow<'static, str> {
+        format!("tile[{}, {}].property_four", self.tile.x, self.tile.y).into()
     }
 }
 
@@ -649,5 +816,16 @@ mod tests {
 
         let bit_str = bitstream.to_string();
         print!("{}", bit_str);
+    }
+
+    #[test]
+    fn test_scripting() {
+        let bitstream = TestBitstream { bits: [false; 256] };
+        let x = TestBitstream::_scripting_iter_all_stuff().collect::<Vec<_>>();
+        for xi in x {
+            let path = xi._scripting_get_path();
+            let result = xi._scripting_get(&bitstream);
+            println!("{} = {}", path, result);
+        }
     }
 }
