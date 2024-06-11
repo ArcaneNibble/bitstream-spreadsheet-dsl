@@ -9,6 +9,7 @@ use bittwiddler_macros::*;
 use itertools::Itertools;
 
 include!(concat!(env!("OUT_DIR"), "/bitproperty-out.rs"));
+include!(concat!(env!("OUT_DIR"), "/tiles-out.rs"));
 
 pub struct TestBitstream {
     pub bits: [bool; 256],
@@ -164,15 +165,13 @@ impl PropertyAccessor for TilePropertyOneAccessor {
     type Output = Property1;
 
     fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        PROPERTY_ONE[biti] + Coordinate::new(self.tile.x as usize, self.tile.y as usize)
+        test_tile::PROPERTY_ONE[biti]
+            + Coordinate::new(
+                self.tile.x as usize * test_tile::W,
+                self.tile.y as usize * test_tile::H,
+            )
     }
 }
-const PROPERTY_ONE: &'static [Coordinate] = &[
-    Coordinate::new(0, 0),
-    Coordinate::new(1, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-];
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyTwoAccessor {
@@ -183,10 +182,12 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
     type BoolArray = [bool; 1];
     type Output = bool;
 
-    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
-        let x = self.tile.x as usize * 4 + self.n as usize;
-        let y = self.tile.y as usize * 4 + 2;
-        (x, y).into()
+    fn get_bit_pos(&self, biti: usize) -> Coordinate {
+        test_tile::PROPERTY_TWO[self.n as usize][biti]
+            + Coordinate::new(
+                self.tile.x as usize * test_tile::W,
+                self.tile.y as usize * test_tile::H,
+            )
     }
 }
 
@@ -244,10 +245,12 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
-        let x = self.tile.x as usize * 4;
-        let y = self.tile.y as usize * 4 + 3;
-        (x, y).into()
+    fn get_bit_pos(&self, biti: usize) -> Coordinate {
+        test_tile::PROPERTY_THREE[biti]
+            + Coordinate::new(
+                self.tile.x as usize * test_tile::W,
+                self.tile.y as usize * test_tile::H,
+            )
     }
 }
 
@@ -259,10 +262,12 @@ impl PropertyAccessor for TilePropertyFourAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
-        let x = self.tile.x as usize * 4 + 1;
-        let y = self.tile.y as usize * 4 + 3;
-        (x, y).into()
+    fn get_bit_pos(&self, biti: usize) -> Coordinate {
+        test_tile::PROPERTY_FOUR[biti]
+            + Coordinate::new(
+                self.tile.x as usize * test_tile::W,
+                self.tile.y as usize * test_tile::H,
+            )
     }
 }
 

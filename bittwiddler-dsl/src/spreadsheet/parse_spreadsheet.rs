@@ -237,7 +237,7 @@ mod tests {
         assert_eq!(result.len(), 1);
 
         let tile = &result[0];
-        assert_eq!(tile.name, "TestTile");
+        assert_eq!(tile.name, "test_tile");
         assert_eq!(tile.spreadsheet_sym_map.len(), 4);
 
         let p1_map = tile.spreadsheet_sym_map.get("P1").unwrap();
