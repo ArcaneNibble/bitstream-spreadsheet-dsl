@@ -10,6 +10,7 @@ version = "0.1.0"
 name = "bittwiddler-example-test"
 version = "0.1.0"
 dependencies = [
+ "bittwiddler-core",
  "itertools",
 ]
 

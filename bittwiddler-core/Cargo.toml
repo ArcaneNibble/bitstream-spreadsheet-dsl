@@ -3,4 +3,8 @@ name = "bittwiddler-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["alloc"]
+alloc = []
+
 [dependencies]
