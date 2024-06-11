@@ -1,5 +1,6 @@
 pub mod macros;
 pub mod property;
+pub mod spreadsheet;
 
 fn is_valid_ident(s: &str) -> bool {
     if s == "_" {

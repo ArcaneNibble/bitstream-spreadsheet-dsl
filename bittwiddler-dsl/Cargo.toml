@@ -8,3 +8,8 @@ proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full", "extra-traits"] }
 unicode-ident = "1.0"
+calamine = "0.24"
+regex = { version = "1.10", default-features = false, features = [
+    "std",
+    "perf",
+] }
