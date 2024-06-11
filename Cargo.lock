@@ -22,7 +22,15 @@ version = "0.1.0"
 dependencies = [
  "bittwiddler-core",
  "bittwiddler-dsl",
+ "bittwiddler-macros",
  "itertools",
+]
+
+[[package]]
+name = "bittwiddler-macros"
+version = "0.1.0"
+dependencies = [
+ "bittwiddler-dsl",
 ]
 
 [[package]]

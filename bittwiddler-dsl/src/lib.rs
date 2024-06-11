@@ -1,3 +1,4 @@
+pub mod macros;
 pub mod property;
 
 fn is_valid_ident(s: &str) -> bool {

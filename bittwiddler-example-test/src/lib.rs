@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use bittwiddler_core::prelude::*;
+use bittwiddler_macros::*;
 use itertools::Itertools;
 
 include!(concat!(env!("OUT_DIR"), "/bitproperty-out.rs"));
@@ -178,16 +179,11 @@ impl HumanLevelDynamicAccessor for Tile {
         unreachable!()
     }
 }
-impl HumanLevelThatHasState for Tile {
-    fn _human_dump_my_state(&self, dump: &mut dyn HumanSinkForStatePieces) {
-        dump.add_state_piece("x", &self.x.to_human_string());
-        dump.add_state_piece("y", &ToString::to_string(&self.y));
-    }
-}
 impl HumanLevelThatHasState for TestBitstream {
     fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
+#[bittwiddler_hierarchy_level]
 #[derive(Clone, Copy)]
 pub struct Tile {
     x: u8,
@@ -214,6 +210,7 @@ impl Tile {
     }
 }
 
+#[bittwiddler_hierarchy_level]
 pub struct TilePropertyOneAccessor {
     tile: Tile,
 }
@@ -227,10 +224,8 @@ impl PropertyAccessor for TilePropertyOneAccessor {
         (x, y).into()
     }
 }
-impl HumanLevelThatHasState for TilePropertyOneAccessor {
-    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
-}
 
+#[bittwiddler_hierarchy_level]
 pub struct TilePropertyTwoAccessor {
     tile: Tile,
     n: u8,
@@ -243,11 +238,6 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
         let x = self.tile.x as usize * 4 + self.n as usize;
         let y = self.tile.y as usize * 4 + 2;
         (x, y).into()
-    }
-}
-impl HumanLevelThatHasState for TilePropertyTwoAccessor {
-    fn _human_dump_my_state(&self, dump: &mut dyn HumanSinkForStatePieces) {
-        dump.add_state_piece("n", &ToString::to_string(&self.n));
     }
 }
 
@@ -295,6 +285,7 @@ impl PropertyLeafWithStringConv<[bool; 1], TilePropertyFourAccessor> for CustomB
         }
     }
 }
+#[bittwiddler_hierarchy_level]
 pub struct TilePropertyThreeAccessor {
     tile: Tile,
 }
@@ -308,9 +299,8 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
         (x, y).into()
     }
 }
-impl HumanLevelThatHasState for TilePropertyThreeAccessor {
-    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
-}
+
+#[bittwiddler_hierarchy_level]
 pub struct TilePropertyFourAccessor {
     tile: Tile,
 }
@@ -323,9 +313,6 @@ impl PropertyAccessor for TilePropertyFourAccessor {
         let y = self.tile.y as usize * 4 + 3;
         (x, y).into()
     }
-}
-impl HumanLevelThatHasState for TilePropertyFourAccessor {
-    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
 #[cfg(test)]

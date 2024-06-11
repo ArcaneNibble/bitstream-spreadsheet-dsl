@@ -3,8 +3,13 @@ name = "bittwiddler-example-test"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["alloc"]
+alloc = []
+
 [dependencies]
 bittwiddler-core = { path = "../bittwiddler-core" }
+bittwiddler-macros = { path = "../bittwiddler-macros" }
 itertools = "0.13"
 
 [build-dependencies]

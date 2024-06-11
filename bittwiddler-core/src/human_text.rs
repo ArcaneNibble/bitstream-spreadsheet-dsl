@@ -21,6 +21,9 @@ pub trait HumanSinkForStatePieces {
 
 /// Trait for one single bit of state, which can be converted to/from strings
 pub trait StatePiece {
+    fn _should_add_piece(&self) -> bool {
+        true
+    }
     fn to_human_string(&self) -> Cow<'static, str>;
     fn from_human_string(s: &str) -> Result<Self, ()>
     where
