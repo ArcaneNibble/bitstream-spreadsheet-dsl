@@ -65,121 +65,26 @@ impl TestBitstream {
     }
 }
 
-// impl HumanLevelDynamicAccessor for TestBitstream {
-//     fn _human_fields(&self) -> &'static [&'static str] {
-//         &[]
-//     }
-
-//     fn _human_sublevels(&self) -> &'static [&'static str] {
-//         &["tile"]
-//     }
-
-//     fn _human_construct_field(
-//         &self,
-//         _idx: usize,
-//         _params: &[&str],
-//     ) -> Box<dyn PropertyAccessorDyn> {
-//         unreachable!()
-//     }
-
-//     fn _human_construct_all_fields<'s>(
-//         &'s self,
-//         _idx: usize,
-//     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
-//         unreachable!()
-//     }
-
-//     fn _human_descend_sublevel(
-//         &self,
-//         idx: usize,
-//         params: &[&str],
-//     ) -> Box<dyn HumanLevelDynamicAccessor> {
-//         match idx {
-//             0 => Box::new(TestBitstream::tile(
-//                 StatePiece::from_human_string(params[0]).unwrap(),
-//                 params[1].parse().unwrap(),
-//             )),
-//             _ => unreachable!(),
-//         }
-//     }
-//     fn _human_construct_all_sublevels<'s>(
-//         &'s self,
-//         idx: usize,
-//     ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
-//         match idx {
-//             0 => Box::new((0..4).cartesian_product(0..4).map(|(y, x)| {
-//                 Box::new(TestBitstream::tile(x, y)) as Box<dyn HumanLevelDynamicAccessor>
-//             })),
-//             _ => unreachable!(),
-//         }
-//     }
-// }
-// impl HumanLevelDynamicAccessor for Tile {
-//     fn _human_fields(&self) -> &'static [&'static str] {
-//         &[
-//             "property_one",
-//             "property_two",
-//             "property_three",
-//             "property_four",
-//         ]
-//     }
-
-//     fn _human_sublevels(&self) -> &'static [&'static str] {
-//         &[]
-//     }
-
-//     fn _human_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn PropertyAccessorDyn> {
-//         match idx {
-//             0 => Box::new(Box::new(self.property_one())),
-//             1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
-//             2 => Box::new(Box::new(self.property_three())),
-//             3 => Box::new(Box::new(self.property_four())),
-//             _ => unreachable!(),
-//         }
-//     }
-//     fn _human_construct_all_fields<'s>(
-//         &'s self,
-//         idx: usize,
-//     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
-//         match idx {
-//             0 => Box::new(
-//                 [Box::new(Box::new(self.property_one())) as Box<dyn PropertyAccessorDyn>]
-//                     .into_iter(),
-//             ),
-//             1 => {
-//                 Box::new((0..4).map(|n| {
-//                     Box::new(Box::new(self.property_two(n))) as Box<dyn PropertyAccessorDyn>
-//                 }))
-//             }
-//             2 => Box::new(
-//                 [Box::new(Box::new(self.property_three())) as Box<dyn PropertyAccessorDyn>]
-//                     .into_iter(),
-//             ),
-//             3 => Box::new(
-//                 [Box::new(Box::new(self.property_four())) as Box<dyn PropertyAccessorDyn>]
-//                     .into_iter(),
-//             ),
-//             _ => unreachable!(),
-//         }
-//     }
-
-//     fn _human_descend_sublevel(
-//         &self,
-//         _idx: usize,
-//         _params: &[&str],
-//     ) -> Box<dyn HumanLevelDynamicAccessor> {
-//         unreachable!()
-//     }
-//     fn _human_construct_all_sublevels<'s>(
-//         &'s self,
-//         _idx: usize,
-//     ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
-//         unreachable!()
-//     }
-// }
-
 impl HumanLevelThatHasState for TestBitstream {
     fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
+}
+
+impl TestBitstreamAutomagicRequiredFunctions for TestBitstream {
+    fn _automagic_construct_all_tile(&self) -> impl Iterator<Item = Tile> {
+        (0..4)
+            .cartesian_product(0..4)
+            .map(|(y, x)| Self::tile(x, y))
+    }
+}
+
+#[bittwiddler_properties]
+impl TestBitstream {
+    pub fn tile(x: u8, y: u8) -> Tile {
+        Tile { x, y }
+    }
+    pub fn dummy_sublevel() -> DummySublevel {
+        DummySublevel
+    }
 }
 
 #[bittwiddler_hierarchy_level]
@@ -188,12 +93,36 @@ pub struct Tile {
     x: u8,
     y: u8,
 }
-#[bittwiddler_properties]
-impl TestBitstream {
-    pub fn tile(x: u8, y: u8) -> Tile {
-        Tile { x, y }
+
+impl TileAutomagicRequiredFunctions for Tile {
+    fn _automagic_construct_all_property_two(
+        &self,
+    ) -> impl Iterator<Item = TilePropertyTwoAccessor> {
+        (0..4).map(|n| self.property_two(n))
     }
 }
+
+#[bittwiddler_hierarchy_level]
+pub struct DummySublevel;
+#[bittwiddler_properties]
+impl DummySublevel {
+    #[property]
+    pub fn dummy_field() -> DummySublevelField {
+        DummySublevelField
+    }
+}
+
+#[bittwiddler_hierarchy_level]
+pub struct DummySublevelField;
+impl PropertyAccessor for DummySublevelField {
+    type BoolArray = [bool; 1];
+    type Output = bool;
+
+    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
+        Coordinate::new(15, 15)
+    }
+}
+
 #[bittwiddler_properties]
 impl Tile {
     #[property]

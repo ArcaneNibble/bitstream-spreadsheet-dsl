@@ -1,9 +1,12 @@
 //! Proc macros to be used on field accessor related structs
 
+use std::borrow::Borrow;
+
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     punctuated::Punctuated, token::Comma, Field, FnArg, ImplItem, ItemImpl, ItemStruct, Meta,
+    ReturnType, Type,
 };
 
 pub fn bittwiddler_hierarchy_level(item: TokenStream) -> TokenStream {
@@ -76,11 +79,21 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
     };
 
     let target_ty = &impl_inp.self_ty;
+    let target_ty_ident = if let Type::Path(p) = target_ty.borrow() {
+        &p.path.segments.last().unwrap().ident
+    } else {
+        panic!("Requrires impl on a path");
+    };
+    let automagic_trait_id = format_ident!("{}AutomagicRequiredFunctions", target_ty_ident);
+
     let mut prop_idx = 0usize;
     let mut fields_strs = Vec::new();
     let mut sublevels_str = Vec::new();
     let mut make_subfields = Vec::new();
     let mut make_sublevels = Vec::new();
+    let mut automagic_trait_fns = Vec::new();
+    let mut iter_all_subfields = Vec::new();
+    let mut iter_all_sublevels = Vec::new();
     for item in &mut impl_inp.items {
         if let ImplItem::Fn(impl_fn) = item {
             let mut is_prop = false;
@@ -104,6 +117,11 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
             }
 
             let ident = &impl_fn.sig.ident;
+            let output_ty = if let ReturnType::Type(_, ty) = &impl_fn.sig.output {
+                ty
+            } else {
+                panic!("Function must return something");
+            };
 
             // string name
             if is_prop {
@@ -121,17 +139,67 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
                 }
             });
             let make_obj = if has_self {
-                quote! {::bittwiddler_core::prelude::BoxReexport::new(self.#ident(#(#args_parse_bits),*))}
+                quote! {self.#ident(#(#args_parse_bits),*)}
             } else {
                 quote! {Self::#ident(#(#args_parse_bits),*)}
             };
-            let make_match = quote! {
-                #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(#make_obj),
+            if is_prop {
+                make_subfields.push(quote! {
+                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(::bittwiddler_core::prelude::BoxReexport::new(#make_obj)),
+                });
+            } else {
+                make_sublevels.push(quote! {
+                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(#make_obj),
+                });
+            }
+
+            // this needs to be impl-ed by user
+            if num_args > 0 {
+                let automagic_fn_ident = format_ident!("_automagic_construct_all_{}", ident);
+                automagic_trait_fns.push(quote! {
+                    fn #automagic_fn_ident(&self) -> impl ::core::iter::Iterator<Item = #output_ty>;
+                });
+            }
+
+            // construct *all* sublevels
+            let coerce = if is_prop {
+                quote! {
+                    ::bittwiddler_core::prelude::BoxReexport::new(
+                        ::bittwiddler_core::prelude::BoxReexport::new(obj),
+                    )
+                        as ::bittwiddler_core::prelude::BoxReexport<
+                            dyn ::bittwiddler_core::prelude::PropertyAccessorDyn,
+                        >
+                }
+            } else {
+                quote! {
+                    ::bittwiddler_core::prelude::BoxReexport::new(obj)
+                    as ::bittwiddler_core::prelude::BoxReexport<
+                        dyn ::bittwiddler_core::prelude::HumanLevelDynamicAccessor,
+                    >
+                }
+            };
+            let make_all_of_this_prop = if num_args > 0 {
+                let automagic_fn_ident = format_ident!("_automagic_construct_all_{}", ident);
+                quote! {
+                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(
+                        #automagic_trait_id::#automagic_fn_ident(self).map(|obj| {
+                            #coerce
+                        })
+                    ),
+                }
+            } else {
+                quote! {
+                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(::core::iter::IntoIterator::into_iter([{
+                        let obj = #make_obj;
+                        #coerce
+                    }])),
+                }
             };
             if is_prop {
-                make_subfields.push(make_match);
+                iter_all_subfields.push(make_all_of_this_prop);
             } else {
-                make_sublevels.push(make_match);
+                iter_all_sublevels.push(make_all_of_this_prop);
             }
 
             prop_idx += 1;
@@ -175,6 +243,7 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
                     > + 's,
             > {
                 match idx {
+                    #(#iter_all_subfields)*
                     _ => unreachable!(),
                 }
             }
@@ -200,9 +269,15 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
                     > + 's,
             > {
                 match idx {
+                    #(#iter_all_sublevels)*
                     _ => unreachable!(),
                 }
             }
+        }
+
+        #[cfg(feature = "alloc")]
+        trait #automagic_trait_id {
+            #(#automagic_trait_fns)*
         }
     }
 }
