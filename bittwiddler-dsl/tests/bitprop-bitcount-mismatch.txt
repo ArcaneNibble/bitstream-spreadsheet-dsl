@@ -1,0 +1,3 @@
+Prop1
+0000        ChoiceZero
+001         ChoiceOne

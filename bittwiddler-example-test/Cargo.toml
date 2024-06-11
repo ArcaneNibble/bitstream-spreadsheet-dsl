@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 bittwiddler-core = { path = "../bittwiddler-core" }
 itertools = "0.13"
+
+[build-dependencies]
+bittwiddler-dsl = { path = "../bittwiddler-dsl" }

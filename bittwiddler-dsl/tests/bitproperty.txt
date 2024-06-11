@@ -1,0 +1,7 @@
+Property1
+0000        ChoiceZero
+0001        ChoiceOne
+0010        ChoiceTwo
+0011        ChoiceThree
+01xX        *ChoiceWithX()
+catchall    CatchallChoice

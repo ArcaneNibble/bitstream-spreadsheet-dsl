@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = [ "bittwiddler-core","bittwiddler-example-test"]
+members = [ "bittwiddler-core", "bittwiddler-dsl","bittwiddler-example-test"]
 
 [profile.release]
 debug = true

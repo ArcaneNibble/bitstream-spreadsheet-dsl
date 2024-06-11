@@ -3,6 +3,8 @@ use std::borrow::Cow;
 use bittwiddler_core::prelude::*;
 use itertools::Itertools;
 
+include!(concat!(env!("OUT_DIR"), "/bitproperty-out.rs"));
+
 pub struct TestBitstream {
     pub bits: [bool; 256],
 }
@@ -216,12 +218,12 @@ pub struct TilePropertyOneAccessor {
     tile: Tile,
 }
 impl PropertyAccessor for TilePropertyOneAccessor {
-    type BoolArray = [bool; 8];
-    type Output = u8;
+    type BoolArray = [bool; 4];
+    type Output = Property1;
 
     fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        let x = self.tile.x as usize * 4 + (biti % 4);
-        let y = self.tile.y as usize * 4 + (biti / 4);
+        let x = self.tile.x as usize * 4 + biti;
+        let y = self.tile.y as usize * 4;
         (x, y).into()
     }
 }
@@ -336,12 +338,12 @@ mod tests {
     fn test_get() {
         #[rustfmt::skip]
         let bitstream = TestBitstream { bits: [
-            _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
+            _0, _0, _0, _1,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _1, _1, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _1, _0, _0,     _1, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
 
-            _0, _0, _0, _0,     _0, _1, _0, _0,     _1, _1, _0, _0,     _0, _0, _0, _0,
+            _0, _0, _0, _0,     _0, _0, _1, _0,     _0, _0, _1, _1,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
@@ -357,9 +359,18 @@ mod tests {
             _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,     _0, _0, _0, _0,
         ] };
 
-        assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_one()), 1);
-        assert_eq!(bitstream.get_field(&Tile::tile(1, 1).property_one()), 2);
-        assert_eq!(bitstream.get_field(&Tile::tile(2, 1).property_one()), 3);
+        assert_eq!(
+            bitstream.get_field(&Tile::tile(0, 0).property_one()),
+            Property1::ChoiceOne
+        );
+        assert_eq!(
+            bitstream.get_field(&Tile::tile(1, 1).property_one()),
+            Property1::ChoiceTwo
+        );
+        assert_eq!(
+            bitstream.get_field(&Tile::tile(2, 1).property_one()),
+            Property1::ChoiceThree
+        );
 
         assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(0)), _0);
         assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(1)), _1);
@@ -368,15 +379,15 @@ mod tests {
 
         assert_eq!(
             bitstream.get_as_string(&Tile::tile(0, 0).property_one()),
-            "00000001"
+            "ChoiceOne"
         );
         assert_eq!(
             bitstream.get_as_string(&Tile::tile(1, 1).property_one()),
-            "00000010"
+            "ChoiceTwo"
         );
         assert_eq!(
             bitstream.get_as_string(&Tile::tile(2, 1).property_one()),
-            "00000011"
+            "ChoiceThree"
         );
 
         assert_eq!(
@@ -401,8 +412,11 @@ mod tests {
     #[test]
     fn test_set() {
         let mut bitstream = TestBitstream { bits: [false; 256] };
-        bitstream.set_field(&Tile::tile(0, 0).property_one(), 0xa5);
-        bitstream.set_from_string(&Tile::tile(1, 1).property_one(), "01011010");
+        bitstream.set_field(
+            &Tile::tile(0, 0).property_one(),
+            Property1::ChoiceWithX([_0, _1, _1, _0]),
+        );
+        bitstream.set_from_string(&Tile::tile(1, 1).property_one(), "ChoiceWithX(0101)");
 
         let bit_str = bitstream.to_string();
         print!("{}", bit_str);
@@ -426,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn test_scripting() {
+    fn test_human() {
         let bitstream = TestBitstream { bits: [false; 256] };
 
         fn recurse(bitstream: &impl BitArray, level: &dyn HumanLevelDynamicAccessor, prefix: &str) {
