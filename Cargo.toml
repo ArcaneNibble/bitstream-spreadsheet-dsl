@@ -5,7 +5,7 @@ members = [
     "bittwiddler-core",
     "bittwiddler-dsl",
     "bittwiddler-example-test",
-    "bittwiddler-macros",
+    "bittwiddler-macros", "bittwiddler-textfile",
 ]
 
 [profile.release]
