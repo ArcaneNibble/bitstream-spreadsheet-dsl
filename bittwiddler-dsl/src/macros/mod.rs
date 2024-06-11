@@ -5,14 +5,65 @@ use std::borrow::Borrow;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    punctuated::Punctuated, token::Comma, Field, FnArg, ImplItem, ItemImpl, ItemStruct, Meta,
-    ReturnType, Type,
+    parse::Parser, punctuated::Punctuated, token::Comma, Expr, Field, FnArg, ImplItem, ItemImpl,
+    ItemStruct, Lit, Meta, MetaNameValue, PathArguments, ReturnType, Type,
 };
 
-pub fn bittwiddler_hierarchy_level(item: TokenStream) -> TokenStream {
+fn is_property_attr(meta: &Meta) -> bool {
+    if let Meta::Path(p) = meta {
+        if p.leading_colon.is_none() && p.segments.len() == 2 {
+            let seg0 = &p.segments[0];
+            let seg1 = &p.segments[1];
+            if seg0.arguments == PathArguments::None && seg1.arguments == PathArguments::None {
+                seg0.ident == "bittwiddler" && seg1.ident == "property"
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+struct NoStdSettings {
+    alloc_feature_gate: Option<String>,
+}
+
+fn parse_no_std_settings(attrs: &Punctuated<MetaNameValue, Comma>) -> NoStdSettings {
+    let mut alloc_feature_gate = None;
+
+    for attr in attrs {
+        if attr.path.is_ident("alloc_feature_gate") {
+            if let Expr::Lit(x) = &attr.value {
+                if let Lit::Str(x) = &x.lit {
+                    alloc_feature_gate = Some(x.value());
+                }
+            }
+        }
+    }
+
+    NoStdSettings { alloc_feature_gate }
+}
+
+pub fn bittwiddler_hierarchy_level(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr_inp = match Punctuated::<MetaNameValue, Comma>::parse_terminated.parse2(attr) {
+        Ok(x) => x,
+        Err(e) => return e.to_compile_error(),
+    };
     let struct_inp = match syn::parse2::<ItemStruct>(item.clone()) {
         Ok(x) => x,
         Err(e) => return e.to_compile_error(),
+    };
+
+    let settings = parse_no_std_settings(&attr_inp);
+    let alloc_feature_gate = if let Some(alloc_feature) = settings.alloc_feature_gate {
+        quote! {
+            #[cfg(feature = #alloc_feature)]
+        }
+    } else {
+        TokenStream::new()
     };
 
     let ident = &struct_inp.ident;
@@ -47,7 +98,7 @@ pub fn bittwiddler_hierarchy_level(item: TokenStream) -> TokenStream {
     quote! {
         #item
 
-        #[cfg(feature = "alloc")]
+        #alloc_feature_gate
         impl ::bittwiddler_core::prelude::StatePiece for #ident {
             fn _should_add_piece(&self) -> ::core::primitive::bool {
                 false
@@ -63,7 +114,7 @@ pub fn bittwiddler_hierarchy_level(item: TokenStream) -> TokenStream {
             }
         }
 
-        #[cfg(feature = "alloc")]
+        #alloc_feature_gate
         impl ::bittwiddler_core::prelude::HumanLevelThatHasState for #ident {
             fn _human_dump_my_state(&self, _dump: &mut dyn ::bittwiddler_core::prelude::HumanSinkForStatePieces) {
                 #(#fields_dump)*
@@ -72,10 +123,23 @@ pub fn bittwiddler_hierarchy_level(item: TokenStream) -> TokenStream {
     }
 }
 
-pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
+pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr_inp = match Punctuated::<MetaNameValue, Comma>::parse_terminated.parse2(attr) {
+        Ok(x) => x,
+        Err(e) => return e.to_compile_error(),
+    };
     let mut impl_inp = match syn::parse2::<ItemImpl>(item) {
         Ok(x) => x,
         Err(e) => return e.to_compile_error(),
+    };
+
+    let settings = parse_no_std_settings(&attr_inp);
+    let alloc_feature_gate = if let Some(alloc_feature) = settings.alloc_feature_gate {
+        quote! {
+            #[cfg(feature = #alloc_feature)]
+        }
+    } else {
+        TokenStream::new()
     };
 
     let target_ty = &impl_inp.self_ty;
@@ -98,12 +162,10 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
         if let ImplItem::Fn(impl_fn) = item {
             let mut is_prop = false;
             for (attr_i, attr) in impl_fn.attrs.iter().enumerate() {
-                if let Meta::Path(p) = &attr.meta {
-                    if p.is_ident("property") {
-                        impl_fn.attrs.remove(attr_i);
-                        is_prop = true;
-                        break;
-                    }
+                if is_property_attr(&attr.meta) {
+                    impl_fn.attrs.remove(attr_i);
+                    is_prop = true;
+                    break;
                 }
             }
 
@@ -209,7 +271,7 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
     quote! {
         #impl_inp
 
-        #[cfg(feature = "alloc")]
+        #alloc_feature_gate
         impl ::bittwiddler_core::prelude::HumanLevelDynamicAccessor for #target_ty {
             fn _human_fields(&self) -> &'static [&'static ::core::primitive::str] {
                 &[
@@ -275,7 +337,7 @@ pub fn bittwiddler_properties(item: TokenStream) -> TokenStream {
             }
         }
 
-        #[cfg(feature = "alloc")]
+        #alloc_feature_gate
         trait #automagic_trait_id {
             #(#automagic_trait_fns)*
         }

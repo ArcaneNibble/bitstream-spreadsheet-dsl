@@ -85,7 +85,7 @@ impl TestBitstreamAutomagicRequiredFunctions for TestBitstream {
     }
 }
 
-#[bittwiddler_properties]
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
 impl TestBitstream {
     pub fn tile(x: u8, y: u8) -> Tile {
         Tile { x, y }
@@ -95,7 +95,7 @@ impl TestBitstream {
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy)]
 pub struct Tile {
     x: u8,
@@ -111,17 +111,17 @@ impl TileAutomagicRequiredFunctions for Tile {
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct DummySublevel;
-#[bittwiddler_properties]
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
 impl DummySublevel {
-    #[property]
+    #[bittwiddler::property]
     pub fn dummy_field() -> DummySublevelField {
         DummySublevelField
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct DummySublevelField;
 impl PropertyAccessor for DummySublevelField {
     type BoolArray = [bool; 1];
@@ -132,30 +132,30 @@ impl PropertyAccessor for DummySublevelField {
     }
 }
 
-#[bittwiddler_properties]
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
 impl Tile {
-    #[property]
+    #[bittwiddler::property]
     pub fn property_one(&self) -> TilePropertyOneAccessor {
         TilePropertyOneAccessor { tile: self.clone() }
     }
-    #[property]
+    #[bittwiddler::property]
     pub fn property_two(&self, n: u8) -> TilePropertyTwoAccessor {
         TilePropertyTwoAccessor {
             tile: self.clone(),
             n,
         }
     }
-    #[property]
+    #[bittwiddler::property]
     pub fn property_three(&self) -> TilePropertyThreeAccessor {
         TilePropertyThreeAccessor { tile: self.clone() }
     }
-    #[property]
+    #[bittwiddler::property]
     pub fn property_four(&self) -> TilePropertyFourAccessor {
         TilePropertyFourAccessor { tile: self.clone() }
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyOneAccessor {
     tile: Tile,
 }
@@ -170,7 +170,7 @@ impl PropertyAccessor for TilePropertyOneAccessor {
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyTwoAccessor {
     tile: Tile,
     n: u8,
@@ -232,7 +232,7 @@ impl PropertyLeafWithStringConv<[bool; 1], TilePropertyFourAccessor> for CustomB
         }
     }
 }
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyThreeAccessor {
     tile: Tile,
 }
@@ -247,7 +247,7 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
     }
 }
 
-#[bittwiddler_hierarchy_level]
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyFourAccessor {
     tile: Tile,
 }
@@ -262,7 +262,7 @@ impl PropertyAccessor for TilePropertyFourAccessor {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod tests {
     use super::*;
     const _1: bool = true;

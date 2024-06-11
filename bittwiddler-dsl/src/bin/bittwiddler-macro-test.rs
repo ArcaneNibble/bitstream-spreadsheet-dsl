@@ -46,8 +46,8 @@ fn main() -> Result<ExitCode, Error> {
     let file_toks = TokenStream::from_str(&file_str)?;
 
     let outp_toks = match args[1].to_string_lossy().borrow() {
-        "struct" => bittwiddler_hierarchy_level(file_toks),
-        "impl" => bittwiddler_properties(file_toks),
+        "struct" => bittwiddler_hierarchy_level(TokenStream::new(), file_toks),
+        "impl" => bittwiddler_properties(TokenStream::new(), file_toks),
         _ => {
             println!("Invalid mode {}", args[1].to_string_lossy());
             return Ok(ExitCode::FAILURE);
