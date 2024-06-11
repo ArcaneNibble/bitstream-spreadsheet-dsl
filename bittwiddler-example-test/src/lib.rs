@@ -65,120 +65,119 @@ impl TestBitstream {
     }
 }
 
-impl HumanLevelDynamicAccessor for TestBitstream {
-    fn _human_fields(&self) -> &'static [&'static str] {
-        &[]
-    }
+// impl HumanLevelDynamicAccessor for TestBitstream {
+//     fn _human_fields(&self) -> &'static [&'static str] {
+//         &[]
+//     }
 
-    fn _human_sublevels(&self) -> &'static [&'static str] {
-        &["tile"]
-    }
+//     fn _human_sublevels(&self) -> &'static [&'static str] {
+//         &["tile"]
+//     }
 
-    fn _human_construct_field(
-        &self,
-        _idx: usize,
-        _params: &[&str],
-    ) -> Box<dyn PropertyAccessorDyn> {
-        unreachable!()
-    }
+//     fn _human_construct_field(
+//         &self,
+//         _idx: usize,
+//         _params: &[&str],
+//     ) -> Box<dyn PropertyAccessorDyn> {
+//         unreachable!()
+//     }
 
-    fn _human_construct_all_fields<'s>(
-        &'s self,
-        _idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
-        unreachable!()
-    }
+//     fn _human_construct_all_fields<'s>(
+//         &'s self,
+//         _idx: usize,
+//     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
+//         unreachable!()
+//     }
 
-    fn _human_descend_sublevel(
-        &self,
-        idx: usize,
-        params: &[&str],
-    ) -> Box<dyn HumanLevelDynamicAccessor> {
-        match idx {
-            0 => Box::new(Tile::tile(
-                StatePiece::from_human_string(params[0]).unwrap(),
-                params[1].parse().unwrap(),
-            )),
-            _ => unreachable!(),
-        }
-    }
-    fn _human_construct_all_sublevels<'s>(
-        &'s self,
-        idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
-        match idx {
-            0 => Box::new(
-                (0..4)
-                    .cartesian_product(0..4)
-                    .map(|(y, x)| Box::new(Tile::tile(x, y)) as Box<dyn HumanLevelDynamicAccessor>),
-            ),
-            _ => unreachable!(),
-        }
-    }
-}
-impl HumanLevelDynamicAccessor for Tile {
-    fn _human_fields(&self) -> &'static [&'static str] {
-        &[
-            "property_one",
-            "property_two",
-            "property_three",
-            "property_four",
-        ]
-    }
+//     fn _human_descend_sublevel(
+//         &self,
+//         idx: usize,
+//         params: &[&str],
+//     ) -> Box<dyn HumanLevelDynamicAccessor> {
+//         match idx {
+//             0 => Box::new(TestBitstream::tile(
+//                 StatePiece::from_human_string(params[0]).unwrap(),
+//                 params[1].parse().unwrap(),
+//             )),
+//             _ => unreachable!(),
+//         }
+//     }
+//     fn _human_construct_all_sublevels<'s>(
+//         &'s self,
+//         idx: usize,
+//     ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
+//         match idx {
+//             0 => Box::new((0..4).cartesian_product(0..4).map(|(y, x)| {
+//                 Box::new(TestBitstream::tile(x, y)) as Box<dyn HumanLevelDynamicAccessor>
+//             })),
+//             _ => unreachable!(),
+//         }
+//     }
+// }
+// impl HumanLevelDynamicAccessor for Tile {
+//     fn _human_fields(&self) -> &'static [&'static str] {
+//         &[
+//             "property_one",
+//             "property_two",
+//             "property_three",
+//             "property_four",
+//         ]
+//     }
 
-    fn _human_sublevels(&self) -> &'static [&'static str] {
-        &[]
-    }
+//     fn _human_sublevels(&self) -> &'static [&'static str] {
+//         &[]
+//     }
 
-    fn _human_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn PropertyAccessorDyn> {
-        match idx {
-            0 => Box::new(Box::new(self.property_one())),
-            1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
-            2 => Box::new(Box::new(self.property_three())),
-            3 => Box::new(Box::new(self.property_four())),
-            _ => unreachable!(),
-        }
-    }
-    fn _human_construct_all_fields<'s>(
-        &'s self,
-        idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
-        match idx {
-            0 => Box::new(
-                [Box::new(Box::new(self.property_one())) as Box<dyn PropertyAccessorDyn>]
-                    .into_iter(),
-            ),
-            1 => {
-                Box::new((0..4).map(|n| {
-                    Box::new(Box::new(self.property_two(n))) as Box<dyn PropertyAccessorDyn>
-                }))
-            }
-            2 => Box::new(
-                [Box::new(Box::new(self.property_three())) as Box<dyn PropertyAccessorDyn>]
-                    .into_iter(),
-            ),
-            3 => Box::new(
-                [Box::new(Box::new(self.property_four())) as Box<dyn PropertyAccessorDyn>]
-                    .into_iter(),
-            ),
-            _ => unreachable!(),
-        }
-    }
+//     fn _human_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn PropertyAccessorDyn> {
+//         match idx {
+//             0 => Box::new(Box::new(self.property_one())),
+//             1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
+//             2 => Box::new(Box::new(self.property_three())),
+//             3 => Box::new(Box::new(self.property_four())),
+//             _ => unreachable!(),
+//         }
+//     }
+//     fn _human_construct_all_fields<'s>(
+//         &'s self,
+//         idx: usize,
+//     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
+//         match idx {
+//             0 => Box::new(
+//                 [Box::new(Box::new(self.property_one())) as Box<dyn PropertyAccessorDyn>]
+//                     .into_iter(),
+//             ),
+//             1 => {
+//                 Box::new((0..4).map(|n| {
+//                     Box::new(Box::new(self.property_two(n))) as Box<dyn PropertyAccessorDyn>
+//                 }))
+//             }
+//             2 => Box::new(
+//                 [Box::new(Box::new(self.property_three())) as Box<dyn PropertyAccessorDyn>]
+//                     .into_iter(),
+//             ),
+//             3 => Box::new(
+//                 [Box::new(Box::new(self.property_four())) as Box<dyn PropertyAccessorDyn>]
+//                     .into_iter(),
+//             ),
+//             _ => unreachable!(),
+//         }
+//     }
 
-    fn _human_descend_sublevel(
-        &self,
-        _idx: usize,
-        _params: &[&str],
-    ) -> Box<dyn HumanLevelDynamicAccessor> {
-        unreachable!()
-    }
-    fn _human_construct_all_sublevels<'s>(
-        &'s self,
-        _idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
-        unreachable!()
-    }
-}
+//     fn _human_descend_sublevel(
+//         &self,
+//         _idx: usize,
+//         _params: &[&str],
+//     ) -> Box<dyn HumanLevelDynamicAccessor> {
+//         unreachable!()
+//     }
+//     fn _human_construct_all_sublevels<'s>(
+//         &'s self,
+//         _idx: usize,
+//     ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
+//         unreachable!()
+//     }
+// }
+
 impl HumanLevelThatHasState for TestBitstream {
     fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
@@ -189,22 +188,30 @@ pub struct Tile {
     x: u8,
     y: u8,
 }
-impl Tile {
-    pub fn tile(x: u8, y: u8) -> Self {
-        Self { x, y }
+#[bittwiddler_properties]
+impl TestBitstream {
+    pub fn tile(x: u8, y: u8) -> Tile {
+        Tile { x, y }
     }
+}
+#[bittwiddler_properties]
+impl Tile {
+    #[property]
     pub fn property_one(&self) -> TilePropertyOneAccessor {
         TilePropertyOneAccessor { tile: self.clone() }
     }
+    #[property]
     pub fn property_two(&self, n: u8) -> TilePropertyTwoAccessor {
         TilePropertyTwoAccessor {
             tile: self.clone(),
             n,
         }
     }
+    #[property]
     pub fn property_three(&self) -> TilePropertyThreeAccessor {
         TilePropertyThreeAccessor { tile: self.clone() }
     }
+    #[property]
     pub fn property_four(&self) -> TilePropertyFourAccessor {
         TilePropertyFourAccessor { tile: self.clone() }
     }
@@ -347,51 +354,63 @@ mod tests {
         ] };
 
         assert_eq!(
-            bitstream.get_field(&Tile::tile(0, 0).property_one()),
+            bitstream.get_field(&TestBitstream::tile(0, 0).property_one()),
             Property1::ChoiceOne
         );
         assert_eq!(
-            bitstream.get_field(&Tile::tile(1, 1).property_one()),
+            bitstream.get_field(&TestBitstream::tile(1, 1).property_one()),
             Property1::ChoiceTwo
         );
         assert_eq!(
-            bitstream.get_field(&Tile::tile(2, 1).property_one()),
+            bitstream.get_field(&TestBitstream::tile(2, 1).property_one()),
             Property1::ChoiceThree
         );
 
-        assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(0)), _0);
-        assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(1)), _1);
-        assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(2)), _1);
-        assert_eq!(bitstream.get_field(&Tile::tile(0, 0).property_two(3)), _0);
+        assert_eq!(
+            bitstream.get_field(&TestBitstream::tile(0, 0).property_two(0)),
+            _0
+        );
+        assert_eq!(
+            bitstream.get_field(&TestBitstream::tile(0, 0).property_two(1)),
+            _1
+        );
+        assert_eq!(
+            bitstream.get_field(&TestBitstream::tile(0, 0).property_two(2)),
+            _1
+        );
+        assert_eq!(
+            bitstream.get_field(&TestBitstream::tile(0, 0).property_two(3)),
+            _0
+        );
 
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(0, 0).property_one()),
+            bitstream.get_as_string(&TestBitstream::tile(0, 0).property_one()),
             "ChoiceOne"
         );
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(1, 1).property_one()),
+            bitstream.get_as_string(&TestBitstream::tile(1, 1).property_one()),
             "ChoiceTwo"
         );
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(2, 1).property_one()),
+            bitstream.get_as_string(&TestBitstream::tile(2, 1).property_one()),
             "ChoiceThree"
         );
 
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(0, 0).property_three()),
+            bitstream.get_as_string(&TestBitstream::tile(0, 0).property_three()),
             "nonono"
         );
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(1, 0).property_three()),
+            bitstream.get_as_string(&TestBitstream::tile(1, 0).property_three()),
             "(1, 0)"
         );
 
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(0, 0).property_four()),
+            bitstream.get_as_string(&TestBitstream::tile(0, 0).property_four()),
             "[0, 0]"
         );
         assert_eq!(
-            bitstream.get_as_string(&Tile::tile(1, 0).property_four()),
+            bitstream.get_as_string(&TestBitstream::tile(1, 0).property_four()),
             "lalala"
         );
     }
@@ -400,10 +419,13 @@ mod tests {
     fn test_set() {
         let mut bitstream = TestBitstream { bits: [false; 256] };
         bitstream.set_field(
-            &Tile::tile(0, 0).property_one(),
+            &TestBitstream::tile(0, 0).property_one(),
             Property1::ChoiceWithX([_0, _1, _1, _0]),
         );
-        bitstream.set_from_string(&Tile::tile(1, 1).property_one(), "ChoiceWithX(0101)");
+        bitstream.set_from_string(
+            &TestBitstream::tile(1, 1).property_one(),
+            "ChoiceWithX(0101)",
+        );
 
         let bit_str = bitstream.to_string();
         print!("{}", bit_str);

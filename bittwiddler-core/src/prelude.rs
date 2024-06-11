@@ -13,3 +13,5 @@ pub use crate::property::{PropertyLeaf, PropertyLeafWithStringConv};
 extern crate alloc;
 #[cfg(feature = "alloc")]
 pub use alloc::borrow::Cow as CowReexport;
+#[cfg(feature = "alloc")]
+pub use alloc::boxed::Box as BoxReexport;
