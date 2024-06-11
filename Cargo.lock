@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "bittwiddler-core"
+version = "0.1.0"
+
+[[package]]
 name = "bittwiddler-example-test"
 version = "0.1.0"
 dependencies = [
