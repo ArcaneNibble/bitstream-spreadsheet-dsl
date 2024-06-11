@@ -380,61 +380,12 @@ mod tests {
         print!("{}", bit_str);
     }
 
-    struct SimpleStringSink<'a> {
-        first: bool,
-        s: &'a mut String,
-    }
-    impl<'a> HumanSinkForStatePieces for SimpleStringSink<'a> {
-        fn add_state_piece(&mut self, arg: &str, val: &str) {
-            if !self.first {
-                self.s.push_str(", ");
-            }
-            self.first = false;
-
-            self.s.push_str(arg);
-            self.s.push('=');
-            self.s.push_str(val);
-        }
-    }
-
     #[test]
     fn test_human() {
         let bitstream = TestBitstream { bits: [false; 256] };
+        let mut out = Vec::new();
+        bittwiddler_textfile::write(&mut out, &bitstream).unwrap();
 
-        fn recurse(bitstream: &impl BitArray, level: &dyn HumanLevelDynamicAccessor, prefix: &str) {
-            for (sublevel_idx, sublevel_name) in level._human_sublevels().iter().enumerate() {
-                for sublevel_obj in level._human_construct_all_sublevels(sublevel_idx) {
-                    let mut sublevel_full_name = prefix.to_string();
-                    sublevel_full_name.push_str(sublevel_name);
-                    sublevel_full_name.push('[');
-                    let mut x = SimpleStringSink {
-                        first: true,
-                        s: &mut sublevel_full_name,
-                    };
-                    sublevel_obj._human_dump_my_state(&mut x);
-                    sublevel_full_name.push_str("].");
-                    recurse(bitstream, &*sublevel_obj, &sublevel_full_name);
-                }
-            }
-
-            for (field_idx, field_name) in level._human_fields().iter().enumerate() {
-                for field_obj in level._human_construct_all_fields(field_idx) {
-                    let mut field_full_name = prefix.to_string();
-                    field_full_name.push_str(field_name);
-                    field_full_name.push('[');
-                    let mut x = SimpleStringSink {
-                        first: true,
-                        s: &mut field_full_name,
-                    };
-                    field_obj._human_dump_my_state(&mut x);
-                    field_full_name.push(']');
-                    let result_str = field_obj._human_string_get(bitstream);
-                    println!("{} = {}", field_full_name, result_str);
-                }
-            }
-        }
-
-        let meta_root: &dyn HumanLevelDynamicAccessor = &bitstream;
-        recurse(&bitstream, meta_root, "");
+        print!("{}", std::str::from_utf8(&out).unwrap());
     }
 }

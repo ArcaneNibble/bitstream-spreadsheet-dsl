@@ -40,6 +40,7 @@ dependencies = [
  "bittwiddler-core",
  "bittwiddler-dsl",
  "bittwiddler-macros",
+ "bittwiddler-textfile",
  "itertools",
 ]
 
@@ -53,6 +54,9 @@ dependencies = [
 [[package]]
 name = "bittwiddler-textfile"
 version = "0.1.0"
+dependencies = [
+ "bittwiddler-core",
+]
 
 [[package]]
 name = "byteorder"

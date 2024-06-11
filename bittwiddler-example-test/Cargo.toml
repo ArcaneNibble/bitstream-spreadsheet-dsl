@@ -10,6 +10,7 @@ alloc = ["bittwiddler-core/alloc"]
 [dependencies]
 bittwiddler-core = { path = "../bittwiddler-core", default-features = false }
 bittwiddler-macros = { path = "../bittwiddler-macros" }
+bittwiddler-textfile = { path = "../bittwiddler-textfile" }
 itertools = "0.13"
 
 [build-dependencies]
