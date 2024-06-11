@@ -1,7 +1,11 @@
-use std::borrow::Cow;
+#[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "alloc")]
+use alloc::borrow::Cow;
 
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
+#[cfg(feature = "alloc")]
 use itertools::Itertools;
 
 include!(concat!(env!("OUT_DIR"), "/bitproperty-out.rs"));
@@ -45,6 +49,7 @@ impl TestBitstream {
         accessor.set(self, val);
     }
 
+    #[cfg(feature = "alloc")]
     pub fn get_as_string<A: PropertyAccessor + PropertyAccessorWithStringConv>(
         &self,
         accessor: &A,
@@ -54,6 +59,7 @@ impl TestBitstream {
     {
         accessor.get_as_string(self)
     }
+    #[cfg(feature = "alloc")]
     pub fn set_from_string<A: PropertyAccessor + PropertyAccessorWithStringConv>(
         &mut self,
         accessor: &A,
@@ -65,10 +71,12 @@ impl TestBitstream {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl HumanLevelThatHasState for TestBitstream {
     fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
+#[cfg(feature = "alloc")]
 impl TestBitstreamAutomagicRequiredFunctions for TestBitstream {
     fn _automagic_construct_all_tile(&self) -> impl Iterator<Item = Tile> {
         (0..4)
@@ -94,6 +102,7 @@ pub struct Tile {
     y: u8,
 }
 
+#[cfg(feature = "alloc")]
 impl TileAutomagicRequiredFunctions for Tile {
     fn _automagic_construct_all_property_two(
         &self,
@@ -187,6 +196,7 @@ impl PropertyLeaf<[bool; 1]> for CustomBool {
         [self.0]
     }
 }
+#[cfg(feature = "alloc")]
 impl PropertyLeafWithStringConv<[bool; 1], TilePropertyThreeAccessor> for CustomBool {
     fn to_string(&self, accessor: &TilePropertyThreeAccessor) -> Cow<'static, str> {
         if !self.0 {
@@ -204,6 +214,7 @@ impl PropertyLeafWithStringConv<[bool; 1], TilePropertyThreeAccessor> for Custom
         }
     }
 }
+#[cfg(feature = "alloc")]
 impl PropertyLeafWithStringConv<[bool; 1], TilePropertyFourAccessor> for CustomBool {
     fn to_string(&self, accessor: &TilePropertyFourAccessor) -> Cow<'static, str> {
         if !self.0 {

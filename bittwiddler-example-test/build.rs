@@ -9,7 +9,8 @@ fn main() {
         let f = File::open(p).unwrap();
         let result = parse_bit_property::parse(f).unwrap();
         let mut settings = emit_bit_property::Settings::default();
-        settings.enable_no_std = false;
+        settings.enable_no_std = true;
+        settings.alloc_feature_gate = Some("alloc".to_string());
         let result_ts = emit_bit_property::emit(&result, &settings);
 
         let mut p = PathBuf::from(env::var_os("OUT_DIR").unwrap());

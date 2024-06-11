@@ -5,10 +5,10 @@ edition = "2021"
 
 [features]
 default = ["alloc"]
-alloc = []
+alloc = ["bittwiddler-core/alloc"]
 
 [dependencies]
-bittwiddler-core = { path = "../bittwiddler-core" }
+bittwiddler-core = { path = "../bittwiddler-core", default-features = false }
 bittwiddler-macros = { path = "../bittwiddler-macros" }
 itertools = "0.13"
 

@@ -11,7 +11,9 @@ extern crate alloc;
 use alloc::borrow::Cow;
 
 use crate::bit_access::{BitArray, Coordinate};
-use crate::property::{PropertyLeaf, PropertyLeafWithStringConv};
+use crate::property::PropertyLeaf;
+#[cfg(feature = "alloc")]
+use crate::property::PropertyLeafWithStringConv;
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
 /// This trait needs to be implemented on a type holding a complete package of state
@@ -66,6 +68,7 @@ where
         Ok(())
     }
 }
+#[cfg(feature = "alloc")]
 impl<A: PropertyAccessor> PropertyAccessorWithStringConv for A where
     Self::Output: PropertyLeafWithStringConv<Self::BoolArray, Self>
 {

@@ -4,6 +4,7 @@
 //! This includes things such as integers and enums, but it can also be something
 //! entirely custom.
 
+#[cfg(feature = "alloc")]
 use core::mem::{self, MaybeUninit};
 
 #[cfg(feature = "alloc")]
@@ -13,6 +14,7 @@ use alloc::borrow::Cow;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+#[cfg(feature = "alloc")]
 use crate::accessor::PropertyAccessor;
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
