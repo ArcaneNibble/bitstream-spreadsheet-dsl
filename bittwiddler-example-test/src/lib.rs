@@ -58,72 +58,20 @@ impl TestBitstream {
     ) where
         A::Output: PropertyLeafWithStringConv<A::BoolArray, A>,
     {
-        accessor.set_from_string(self, val);
+        accessor.set_from_string(self, val).unwrap();
     }
 }
 
-pub trait ScriptingArgSink {
-    fn add_arg(&mut self, arg: &str, val: &str);
-}
-
-pub trait ScriptingThingWithArgs {
-    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink);
-}
-
-pub trait PropertyAccessorDyn: ScriptingThingWithArgs {
-    fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
-    fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str);
-}
-impl<A: PropertyAccessor> PropertyAccessorDyn for Box<A> {
-    fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str> {
-        self.get_as_string(bitstream)
-    }
-
-    fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str) {
-        self.set_from_string(bitstream, val);
-    }
-}
-impl<A: PropertyAccessor> ScriptingThingWithArgs for Box<A> {
-    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
-        A::_scripting_dump_my_args(self, dump)
-    }
-}
-
-pub trait AccessorScriptingMetadata: ScriptingThingWithArgs {
-    fn _scripting_fields(&self) -> &'static [&'static str];
-    fn _scripting_sublevels(&self) -> &'static [&'static str];
-
-    fn _scripting_construct_field(
-        &self,
-        idx: usize,
-        params: &[&str],
-    ) -> Box<dyn PropertyAccessorDyn>;
-    fn _scripting_construct_all_fields<'s>(
-        &'s self,
-        idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's>;
-
-    fn _scripting_descend_sublevel(
-        &self,
-        idx: usize,
-        params: &[&str],
-    ) -> Box<dyn AccessorScriptingMetadata>;
-    fn _scripting_construct_all_sublevels<'s>(
-        &'s self,
-        idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's>;
-}
-
-impl AccessorScriptingMetadata for TestBitstream {
-    fn _scripting_fields(&self) -> &'static [&'static str] {
+impl HumanLevelDynamicAccessor for TestBitstream {
+    fn _human_fields(&self) -> &'static [&'static str] {
         &[]
     }
 
-    fn _scripting_sublevels(&self) -> &'static [&'static str] {
+    fn _human_sublevels(&self) -> &'static [&'static str] {
         &["tile"]
     }
 
-    fn _scripting_construct_field(
+    fn _human_construct_field(
         &self,
         _idx: usize,
         _params: &[&str],
@@ -131,18 +79,18 @@ impl AccessorScriptingMetadata for TestBitstream {
         unreachable!()
     }
 
-    fn _scripting_construct_all_fields<'s>(
+    fn _human_construct_all_fields<'s>(
         &'s self,
         _idx: usize,
     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
         unreachable!()
     }
 
-    fn _scripting_descend_sublevel(
+    fn _human_descend_sublevel(
         &self,
         idx: usize,
         params: &[&str],
-    ) -> Box<dyn AccessorScriptingMetadata> {
+    ) -> Box<dyn HumanLevelDynamicAccessor> {
         match idx {
             0 => Box::new(Tile::tile(
                 params[0].parse().unwrap(),
@@ -151,22 +99,22 @@ impl AccessorScriptingMetadata for TestBitstream {
             _ => unreachable!(),
         }
     }
-    fn _scripting_construct_all_sublevels<'s>(
+    fn _human_construct_all_sublevels<'s>(
         &'s self,
         idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's> {
+    ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
         match idx {
             0 => Box::new(
                 (0..4)
                     .cartesian_product(0..4)
-                    .map(|(y, x)| Box::new(Tile::tile(x, y)) as Box<dyn AccessorScriptingMetadata>),
+                    .map(|(y, x)| Box::new(Tile::tile(x, y)) as Box<dyn HumanLevelDynamicAccessor>),
             ),
             _ => unreachable!(),
         }
     }
 }
-impl AccessorScriptingMetadata for Tile {
-    fn _scripting_fields(&self) -> &'static [&'static str] {
+impl HumanLevelDynamicAccessor for Tile {
+    fn _human_fields(&self) -> &'static [&'static str] {
         &[
             "property_one",
             "property_two",
@@ -175,15 +123,11 @@ impl AccessorScriptingMetadata for Tile {
         ]
     }
 
-    fn _scripting_sublevels(&self) -> &'static [&'static str] {
+    fn _human_sublevels(&self) -> &'static [&'static str] {
         &[]
     }
 
-    fn _scripting_construct_field(
-        &self,
-        idx: usize,
-        params: &[&str],
-    ) -> Box<dyn PropertyAccessorDyn> {
+    fn _human_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn PropertyAccessorDyn> {
         match idx {
             0 => Box::new(Box::new(self.property_one())),
             1 => Box::new(Box::new(self.property_two(params[0].parse().unwrap()))),
@@ -192,7 +136,7 @@ impl AccessorScriptingMetadata for Tile {
             _ => unreachable!(),
         }
     }
-    fn _scripting_construct_all_fields<'s>(
+    fn _human_construct_all_fields<'s>(
         &'s self,
         idx: usize,
     ) -> Box<dyn Iterator<Item = Box<dyn PropertyAccessorDyn>> + 's> {
@@ -218,28 +162,28 @@ impl AccessorScriptingMetadata for Tile {
         }
     }
 
-    fn _scripting_descend_sublevel(
+    fn _human_descend_sublevel(
         &self,
         _idx: usize,
         _params: &[&str],
-    ) -> Box<dyn AccessorScriptingMetadata> {
+    ) -> Box<dyn HumanLevelDynamicAccessor> {
         unreachable!()
     }
-    fn _scripting_construct_all_sublevels<'s>(
+    fn _human_construct_all_sublevels<'s>(
         &'s self,
         _idx: usize,
-    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's> {
+    ) -> Box<dyn Iterator<Item = Box<dyn HumanLevelDynamicAccessor>> + 's> {
         unreachable!()
     }
 }
-impl ScriptingThingWithArgs for Tile {
-    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
-        dump.add_arg("x", &ToString::to_string(&self.x));
-        dump.add_arg("y", &ToString::to_string(&self.y));
+impl HumanLevelThatHasState for Tile {
+    fn _human_dump_my_state(&self, dump: &mut dyn HumanSinkForStatePieces) {
+        dump.add_state_piece("x", &ToString::to_string(&self.x));
+        dump.add_state_piece("y", &ToString::to_string(&self.y));
     }
 }
-impl ScriptingThingWithArgs for TestBitstream {
-    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
+impl HumanLevelThatHasState for TestBitstream {
+    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
 #[derive(Clone, Copy)]
@@ -281,8 +225,8 @@ impl PropertyAccessor for TilePropertyOneAccessor {
         (x, y).into()
     }
 }
-impl ScriptingThingWithArgs for TilePropertyOneAccessor {
-    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
+impl HumanLevelThatHasState for TilePropertyOneAccessor {
+    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
 pub struct TilePropertyTwoAccessor {
@@ -299,9 +243,9 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
         (x, y).into()
     }
 }
-impl ScriptingThingWithArgs for TilePropertyTwoAccessor {
-    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
-        dump.add_arg("n", &ToString::to_string(&self.n));
+impl HumanLevelThatHasState for TilePropertyTwoAccessor {
+    fn _human_dump_my_state(&self, dump: &mut dyn HumanSinkForStatePieces) {
+        dump.add_state_piece("n", &ToString::to_string(&self.n));
     }
 }
 
@@ -362,8 +306,8 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
         (x, y).into()
     }
 }
-impl ScriptingThingWithArgs for TilePropertyThreeAccessor {
-    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
+impl HumanLevelThatHasState for TilePropertyThreeAccessor {
+    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 pub struct TilePropertyFourAccessor {
     tile: Tile,
@@ -378,8 +322,8 @@ impl PropertyAccessor for TilePropertyFourAccessor {
         (x, y).into()
     }
 }
-impl ScriptingThingWithArgs for TilePropertyFourAccessor {
-    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
+impl HumanLevelThatHasState for TilePropertyFourAccessor {
+    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
 }
 
 #[cfg(test)]
@@ -468,8 +412,8 @@ mod tests {
         first: bool,
         s: &'a mut String,
     }
-    impl<'a> ScriptingArgSink for SimpleStringSink<'a> {
-        fn add_arg(&mut self, arg: &str, val: &str) {
+    impl<'a> HumanSinkForStatePieces for SimpleStringSink<'a> {
+        fn add_state_piece(&mut self, arg: &str, val: &str) {
             if !self.first {
                 self.s.push_str(", ");
             }
@@ -485,9 +429,9 @@ mod tests {
     fn test_scripting() {
         let bitstream = TestBitstream { bits: [false; 256] };
 
-        fn recurse(bitstream: &impl BitArray, level: &dyn AccessorScriptingMetadata, prefix: &str) {
-            for (sublevel_idx, sublevel_name) in level._scripting_sublevels().iter().enumerate() {
-                for sublevel_obj in level._scripting_construct_all_sublevels(sublevel_idx) {
+        fn recurse(bitstream: &impl BitArray, level: &dyn HumanLevelDynamicAccessor, prefix: &str) {
+            for (sublevel_idx, sublevel_name) in level._human_sublevels().iter().enumerate() {
+                for sublevel_obj in level._human_construct_all_sublevels(sublevel_idx) {
                     let mut sublevel_full_name = prefix.to_string();
                     sublevel_full_name.push_str(sublevel_name);
                     sublevel_full_name.push('[');
@@ -495,14 +439,14 @@ mod tests {
                         first: true,
                         s: &mut sublevel_full_name,
                     };
-                    sublevel_obj._scripting_dump_my_args(&mut x);
+                    sublevel_obj._human_dump_my_state(&mut x);
                     sublevel_full_name.push_str("].");
                     recurse(bitstream, &*sublevel_obj, &sublevel_full_name);
                 }
             }
 
-            for (field_idx, field_name) in level._scripting_fields().iter().enumerate() {
-                for field_obj in level._scripting_construct_all_fields(field_idx) {
+            for (field_idx, field_name) in level._human_fields().iter().enumerate() {
+                for field_obj in level._human_construct_all_fields(field_idx) {
                     let mut field_full_name = prefix.to_string();
                     field_full_name.push_str(field_name);
                     field_full_name.push('[');
@@ -510,15 +454,15 @@ mod tests {
                         first: true,
                         s: &mut field_full_name,
                     };
-                    field_obj._scripting_dump_my_args(&mut x);
+                    field_obj._human_dump_my_state(&mut x);
                     field_full_name.push(']');
-                    let result_str = field_obj._scripting_get(bitstream);
+                    let result_str = field_obj._human_string_get(bitstream);
                     println!("{} = {}", field_full_name, result_str);
                 }
             }
         }
 
-        let meta_root: &dyn AccessorScriptingMetadata = &bitstream;
+        let meta_root: &dyn HumanLevelDynamicAccessor = &bitstream;
         recurse(&bitstream, meta_root, "");
     }
 }

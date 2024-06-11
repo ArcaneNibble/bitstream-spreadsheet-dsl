@@ -8,5 +8,7 @@ pub mod prelude;
 
 mod accessor;
 mod bit_access;
+#[cfg(feature = "alloc")]
+mod human_text;
 mod property;
 mod workarounds;
