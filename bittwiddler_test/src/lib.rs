@@ -380,11 +380,7 @@ impl ToString for TestBitstream {
     }
 }
 
-pub trait FieldAccessorScriptingGetPath {
-    fn _scripting_get_path(&self) -> Cow<'static, str>;
-}
-
-pub trait FieldAccessor: FieldAccessorScriptingGetPath {
+pub trait FieldAccessor: ScriptingThingWithArgs {
     #[allow(private_bounds)]
     type BoolArray: MustBeABoolArrayConstGenericsWorkaround;
     type Output: BitPropertyWithStringConv<Self::BoolArray, Self>
@@ -449,9 +445,15 @@ impl TestBitstream {
     }
 }
 
-pub trait FieldAccessorDyn {
-    fn _scripting_get_path(&self) -> Cow<'static, str>;
+pub trait ScriptingArgSink {
+    fn add_arg(&mut self, arg: &str, val: &str);
+}
 
+pub trait ScriptingThingWithArgs {
+    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink);
+}
+
+pub trait FieldAccessorDyn: ScriptingThingWithArgs {
     fn _scripting_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
     fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str);
 }
@@ -463,63 +465,32 @@ impl<A: FieldAccessor> FieldAccessorDyn for Box<A> {
     fn _scripting_set(&self, bitstream: &mut dyn BitArray, val: &str) {
         self.set_from_string(bitstream, val);
     }
-
-    fn _scripting_get_path(&self) -> Cow<'static, str> {
-        A::_scripting_get_path(self)
+}
+impl<A: FieldAccessor> ScriptingThingWithArgs for Box<A> {
+    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
+        A::_scripting_dump_my_args(self, dump)
     }
 }
 
-pub trait AccessorScriptingMetadata {
+pub trait AccessorScriptingMetadata: ScriptingThingWithArgs {
     fn _scripting_fields(&self) -> &'static [&'static str];
     fn _scripting_sublevels(&self) -> &'static [&'static str];
 
     fn _scripting_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn FieldAccessorDyn>;
+    fn _scripting_construct_all_fields<'s>(
+        &'s self,
+        idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's>;
+
     fn _scripting_descend_sublevel(
         &self,
         idx: usize,
         params: &[&str],
     ) -> Box<dyn AccessorScriptingMetadata>;
-}
-
-// pub struct TestBitstreamAllFieldsIter {
-//     idx: usize,
-// }
-// impl Iterator for TestBitstreamAllFieldsIter {
-//     type Item = Box<dyn FieldAccessorDyn>;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         const STUFF: &'static [&'static dyn FnOnce() -> ()] = &[];
-//         let idx = self.idx;
-//         if idx >= STUFF.len() {
-//             None
-//         } else {
-//             self.idx += 1;
-//             Some(STUFF[idx])
-//         }
-//     }
-// }
-
-impl TestBitstream {
-    fn _scripting_iter_all_stuff() -> impl Iterator<Item = Box<dyn FieldAccessorDyn>> {
-        (0..4)
-            .cartesian_product(0..4)
-            .map(|(y, x)| {
-                [
-                    Box::new(Box::new(Tile::tile(x, y).property_one()))
-                        as Box<dyn FieldAccessorDyn>,
-                    Box::new(Box::new(Tile::tile(x, y).property_three()))
-                        as Box<dyn FieldAccessorDyn>,
-                    Box::new(Box::new(Tile::tile(x, y).property_four()))
-                        as Box<dyn FieldAccessorDyn>,
-                ]
-                .into_iter()
-                .chain((0..4).map(move |n| {
-                    Box::new(Box::new(Tile::tile(x, y).property_two(n)))
-                        as Box<dyn FieldAccessorDyn>
-                }))
-            })
-            .flatten()
-    }
+    fn _scripting_construct_all_sublevels<'s>(
+        &'s self,
+        idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's>;
 }
 
 impl AccessorScriptingMetadata for TestBitstream {
@@ -539,6 +510,13 @@ impl AccessorScriptingMetadata for TestBitstream {
         unreachable!()
     }
 
+    fn _scripting_construct_all_fields<'s>(
+        &'s self,
+        _idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's> {
+        unreachable!()
+    }
+
     fn _scripting_descend_sublevel(
         &self,
         idx: usize,
@@ -549,6 +527,19 @@ impl AccessorScriptingMetadata for TestBitstream {
                 params[0].parse().unwrap(),
                 params[1].parse().unwrap(),
             )),
+            _ => unreachable!(),
+        }
+    }
+    fn _scripting_construct_all_sublevels<'s>(
+        &'s self,
+        idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's> {
+        match idx {
+            0 => Box::new(
+                (0..4)
+                    .cartesian_product(0..4)
+                    .map(|(y, x)| Box::new(Tile::tile(x, y)) as Box<dyn AccessorScriptingMetadata>),
+            ),
             _ => unreachable!(),
         }
     }
@@ -576,6 +567,28 @@ impl AccessorScriptingMetadata for Tile {
             _ => unreachable!(),
         }
     }
+    fn _scripting_construct_all_fields<'s>(
+        &'s self,
+        idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn FieldAccessorDyn>> + 's> {
+        match idx {
+            0 => Box::new(
+                [Box::new(Box::new(self.property_one())) as Box<dyn FieldAccessorDyn>].into_iter(),
+            ),
+            1 => Box::new(
+                (0..4)
+                    .map(|n| Box::new(Box::new(self.property_two(n))) as Box<dyn FieldAccessorDyn>),
+            ),
+            2 => Box::new(
+                [Box::new(Box::new(self.property_three())) as Box<dyn FieldAccessorDyn>]
+                    .into_iter(),
+            ),
+            3 => Box::new(
+                [Box::new(Box::new(self.property_four())) as Box<dyn FieldAccessorDyn>].into_iter(),
+            ),
+            _ => unreachable!(),
+        }
+    }
 
     fn _scripting_descend_sublevel(
         &self,
@@ -584,6 +597,21 @@ impl AccessorScriptingMetadata for Tile {
     ) -> Box<dyn AccessorScriptingMetadata> {
         unreachable!()
     }
+    fn _scripting_construct_all_sublevels<'s>(
+        &'s self,
+        _idx: usize,
+    ) -> Box<dyn Iterator<Item = Box<dyn AccessorScriptingMetadata>> + 's> {
+        unreachable!()
+    }
+}
+impl ScriptingThingWithArgs for Tile {
+    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
+        dump.add_arg("x", &ToString::to_string(&self.x));
+        dump.add_arg("y", &ToString::to_string(&self.y));
+    }
+}
+impl ScriptingThingWithArgs for TestBitstream {
+    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
 }
 
 #[derive(Clone, Copy)]
@@ -625,10 +653,8 @@ impl FieldAccessor for TilePropertyOneAccessor {
         (x, y)
     }
 }
-impl FieldAccessorScriptingGetPath for TilePropertyOneAccessor {
-    fn _scripting_get_path(&self) -> Cow<'static, str> {
-        format!("tile[{}, {}].property_one", self.tile.x, self.tile.y).into()
-    }
+impl ScriptingThingWithArgs for TilePropertyOneAccessor {
+    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
 }
 
 pub struct TilePropertyTwoAccessor {
@@ -645,13 +671,9 @@ impl FieldAccessor for TilePropertyTwoAccessor {
         (x, y)
     }
 }
-impl FieldAccessorScriptingGetPath for TilePropertyTwoAccessor {
-    fn _scripting_get_path(&self) -> Cow<'static, str> {
-        format!(
-            "tile[{}, {}].property_two[{}]",
-            self.tile.x, self.tile.y, self.n
-        )
-        .into()
+impl ScriptingThingWithArgs for TilePropertyTwoAccessor {
+    fn _scripting_dump_my_args(&self, dump: &mut dyn ScriptingArgSink) {
+        dump.add_arg("n", &ToString::to_string(&self.n));
     }
 }
 
@@ -712,10 +734,8 @@ impl FieldAccessor for TilePropertyThreeAccessor {
         (x, y)
     }
 }
-impl FieldAccessorScriptingGetPath for TilePropertyThreeAccessor {
-    fn _scripting_get_path(&self) -> Cow<'static, str> {
-        format!("tile[{}, {}].property_three", self.tile.x, self.tile.y).into()
-    }
+impl ScriptingThingWithArgs for TilePropertyThreeAccessor {
+    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
 }
 pub struct TilePropertyFourAccessor {
     tile: Tile,
@@ -730,10 +750,8 @@ impl FieldAccessor for TilePropertyFourAccessor {
         (x, y)
     }
 }
-impl FieldAccessorScriptingGetPath for TilePropertyFourAccessor {
-    fn _scripting_get_path(&self) -> Cow<'static, str> {
-        format!("tile[{}, {}].property_four", self.tile.x, self.tile.y).into()
-    }
+impl ScriptingThingWithArgs for TilePropertyFourAccessor {
+    fn _scripting_dump_my_args(&self, _dump: &mut dyn ScriptingArgSink) {}
 }
 
 #[cfg(test)]
@@ -818,14 +836,61 @@ mod tests {
         print!("{}", bit_str);
     }
 
+    struct SimpleStringSink<'a> {
+        first: bool,
+        s: &'a mut String,
+    }
+    impl<'a> ScriptingArgSink for SimpleStringSink<'a> {
+        fn add_arg(&mut self, arg: &str, val: &str) {
+            if !self.first {
+                self.s.push_str(", ");
+            }
+            self.first = false;
+
+            self.s.push_str(arg);
+            self.s.push('=');
+            self.s.push_str(val);
+        }
+    }
+
     #[test]
     fn test_scripting() {
         let bitstream = TestBitstream { bits: [false; 256] };
-        let x = TestBitstream::_scripting_iter_all_stuff().collect::<Vec<_>>();
-        for xi in x {
-            let path = xi._scripting_get_path();
-            let result = xi._scripting_get(&bitstream);
-            println!("{} = {}", path, result);
+
+        fn recurse(bitstream: &impl BitArray, level: &dyn AccessorScriptingMetadata, prefix: &str) {
+            for (sublevel_idx, sublevel_name) in level._scripting_sublevels().iter().enumerate() {
+                for sublevel_obj in level._scripting_construct_all_sublevels(sublevel_idx) {
+                    let mut sublevel_full_name = prefix.to_string();
+                    sublevel_full_name.push_str(sublevel_name);
+                    sublevel_full_name.push('[');
+                    let mut x = SimpleStringSink {
+                        first: true,
+                        s: &mut sublevel_full_name,
+                    };
+                    sublevel_obj._scripting_dump_my_args(&mut x);
+                    sublevel_full_name.push_str("].");
+                    recurse(bitstream, &*sublevel_obj, &sublevel_full_name);
+                }
+            }
+
+            for (field_idx, field_name) in level._scripting_fields().iter().enumerate() {
+                for field_obj in level._scripting_construct_all_fields(field_idx) {
+                    let mut field_full_name = prefix.to_string();
+                    field_full_name.push_str(field_name);
+                    field_full_name.push('[');
+                    let mut x = SimpleStringSink {
+                        first: true,
+                        s: &mut field_full_name,
+                    };
+                    field_obj._scripting_dump_my_args(&mut x);
+                    field_full_name.push(']');
+                    let result_str = field_obj._scripting_get(bitstream);
+                    println!("{} = {}", field_full_name, result_str);
+                }
+            }
         }
+
+        let meta_root: &dyn AccessorScriptingMetadata = &bitstream;
+        recurse(&bitstream, meta_root, "");
     }
 }
