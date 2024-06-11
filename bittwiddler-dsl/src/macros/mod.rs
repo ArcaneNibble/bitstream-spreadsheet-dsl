@@ -197,7 +197,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                 quote! {
                     ::bittwiddler_core::prelude::StatePiece::from_human_string(
                         &_params[#arg_i]
-                    ).unwrap()  // fixme unwrap
+                    )?
                 }
             });
             let make_obj = if has_self {
@@ -207,11 +207,11 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
             };
             if is_prop {
                 make_subfields.push(quote! {
-                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(::bittwiddler_core::prelude::BoxReexport::new(#make_obj)),
+                    #prop_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(::bittwiddler_core::prelude::BoxReexport::new(#make_obj))),
                 });
             } else {
                 make_sublevels.push(quote! {
-                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(#make_obj),
+                    #prop_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(#make_obj)),
                 });
             }
 
@@ -288,7 +288,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                 &self,
                 idx: ::core::primitive::usize,
                 _params: &[&::core::primitive::str]
-            ) -> ::bittwiddler_core::prelude::BoxReexport<dyn ::bittwiddler_core::prelude::PropertyAccessorDyn> {
+            ) -> ::core::result::Result<::bittwiddler_core::prelude::BoxReexport<dyn ::bittwiddler_core::prelude::PropertyAccessorDyn>, ()> {
                 match idx {
                     #(#make_subfields)*
                     _ => unreachable!()
@@ -314,7 +314,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                 &self,
                 idx: ::core::primitive::usize,
                 _params: &[&::core::primitive::str],
-            ) -> ::bittwiddler_core::prelude::BoxReexport<dyn ::bittwiddler_core::prelude::HumanLevelDynamicAccessor> {
+            ) -> ::core::result::Result<::bittwiddler_core::prelude::BoxReexport<dyn ::bittwiddler_core::prelude::HumanLevelDynamicAccessor>, ()> {
                 match idx {
                     #(#make_sublevels)*
                     _ => unreachable!()

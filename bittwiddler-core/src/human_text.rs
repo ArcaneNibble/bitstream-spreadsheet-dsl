@@ -78,7 +78,11 @@ pub trait HumanLevelDynamicAccessor: HumanLevelThatHasState {
     fn _human_fields(&self) -> &'static [&'static str];
     fn _human_sublevels(&self) -> &'static [&'static str];
 
-    fn _human_construct_field(&self, idx: usize, params: &[&str]) -> Box<dyn PropertyAccessorDyn>;
+    fn _human_construct_field(
+        &self,
+        idx: usize,
+        params: &[&str],
+    ) -> Result<Box<dyn PropertyAccessorDyn>, ()>;
     fn _human_construct_all_fields<'s>(
         &'s self,
         idx: usize,
@@ -88,7 +92,7 @@ pub trait HumanLevelDynamicAccessor: HumanLevelThatHasState {
         &self,
         idx: usize,
         params: &[&str],
-    ) -> Box<dyn HumanLevelDynamicAccessor>;
+    ) -> Result<Box<dyn HumanLevelDynamicAccessor>, ()>;
     fn _human_construct_all_sublevels<'s>(
         &'s self,
         idx: usize,

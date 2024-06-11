@@ -2,3 +2,5 @@
 
 mod writer;
 pub use writer::write;
+mod parser;
+pub use parser::parse;

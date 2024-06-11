@@ -388,4 +388,22 @@ mod tests {
 
         print!("{}", std::str::from_utf8(&out).unwrap());
     }
+
+    #[test]
+    fn test_human_write() {
+        let mut bitstream = TestBitstream { bits: [false; 256] };
+
+        bittwiddler_textfile::parse(
+            "
+tile[x=0, 0].property_one = ChoiceOne
+tile[1, 0].property_one = ChoiceTwo
+        "
+            .as_bytes(),
+            &mut bitstream,
+        )
+        .unwrap();
+
+        let bit_str = bitstream.to_string();
+        print!("{}", bit_str);
+    }
 }
