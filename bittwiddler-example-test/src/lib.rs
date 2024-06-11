@@ -95,7 +95,7 @@ impl HumanLevelDynamicAccessor for TestBitstream {
     ) -> Box<dyn HumanLevelDynamicAccessor> {
         match idx {
             0 => Box::new(Tile::tile(
-                params[0].parse().unwrap(),
+                StatePiece::from_human_string(params[0]).unwrap(),
                 params[1].parse().unwrap(),
             )),
             _ => unreachable!(),
@@ -180,7 +180,7 @@ impl HumanLevelDynamicAccessor for Tile {
 }
 impl HumanLevelThatHasState for Tile {
     fn _human_dump_my_state(&self, dump: &mut dyn HumanSinkForStatePieces) {
-        dump.add_state_piece("x", &ToString::to_string(&self.x));
+        dump.add_state_piece("x", &self.x.to_human_string());
         dump.add_state_piece("y", &ToString::to_string(&self.y));
     }
 }

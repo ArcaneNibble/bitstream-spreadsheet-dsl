@@ -2,9 +2,12 @@
 //!
 //! Most of this is intended to be implemented automatically with macros
 
+use core::str::FromStr;
+
 extern crate alloc;
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
+use alloc::string::ToString;
 
 use crate::accessor::PropertyAccessorWithStringConv;
 use crate::bit_access::BitArray;
@@ -14,6 +17,26 @@ use crate::property::PropertyLeafWithStringConv;
 /// "pieces of state" at _this_ hierarchy sublevel only
 pub trait HumanSinkForStatePieces {
     fn add_state_piece(&mut self, arg: &str, val: &str);
+}
+
+/// Trait for one single bit of state, which can be converted to/from strings
+pub trait StatePiece {
+    fn to_human_string(&self) -> Cow<'static, str>;
+    fn from_human_string(s: &str) -> Result<Self, ()>
+    where
+        Self: Sized;
+}
+impl<T: ToString + FromStr> StatePiece for T {
+    fn to_human_string(&self) -> Cow<'static, str> {
+        self.to_string().into()
+    }
+
+    fn from_human_string(s: &str) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Self::from_str(s).map_err(|_| ())
+    }
 }
 
 /// Trait common to sublevels as well as property leaf nodes
