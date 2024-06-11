@@ -23,7 +23,7 @@ pub struct Coordinate {
     pub y: usize,
 }
 impl Coordinate {
-    pub fn new(x: usize, y: usize) -> Self {
+    pub const fn new(x: usize, y: usize) -> Self {
         Self { x, y }
     }
 }

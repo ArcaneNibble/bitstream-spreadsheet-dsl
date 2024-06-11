@@ -164,11 +164,15 @@ impl PropertyAccessor for TilePropertyOneAccessor {
     type Output = Property1;
 
     fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        let x = self.tile.x as usize * 4 + biti;
-        let y = self.tile.y as usize * 4;
-        (x, y).into()
+        PROPERTY_ONE[biti] + Coordinate::new(self.tile.x as usize, self.tile.y as usize)
     }
 }
+const PROPERTY_ONE: &'static [Coordinate] = &[
+    Coordinate::new(0, 0),
+    Coordinate::new(1, 0),
+    Coordinate::new(2, 0),
+    Coordinate::new(3, 0),
+];
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyTwoAccessor {
