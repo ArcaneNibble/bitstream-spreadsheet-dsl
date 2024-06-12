@@ -26,6 +26,20 @@ impl Coordinate {
     pub const fn new(x: usize, y: usize) -> Self {
         Self { x, y }
     }
+
+    pub const fn sub_x_add_y(self, rhs: Self) -> Self {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+
+    pub const fn add_x_sub_y(self, rhs: Self) -> Self {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
 }
 impl From<(usize, usize)> for Coordinate {
     fn from(value: (usize, usize)) -> Self {

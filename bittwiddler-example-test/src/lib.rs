@@ -128,8 +128,8 @@ impl PropertyAccessor for DummySublevelField {
     type BoolArray = [bool; 1];
     type Output = bool;
 
-    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
-        Coordinate::new(15, 15)
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (Coordinate::new(15, 15), false)
     }
 }
 
@@ -164,12 +164,15 @@ impl PropertyAccessor for TilePropertyOneAccessor {
     type BoolArray = [bool; 4];
     type Output = Property1;
 
-    fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        test_tile::PROPERTY_ONE[biti]
-            + Coordinate::new(
-                self.tile.x as usize * test_tile::W,
-                self.tile.y as usize * test_tile::H,
-            )
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (
+            test_tile::PROPERTY_ONE[biti]
+                + Coordinate::new(
+                    self.tile.x as usize * test_tile::W,
+                    self.tile.y as usize * test_tile::H,
+                ),
+            false,
+        )
     }
 }
 
@@ -182,12 +185,15 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
     type BoolArray = [bool; 1];
     type Output = bool;
 
-    fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        test_tile::PROPERTY_TWO[self.n as usize][biti]
-            + Coordinate::new(
-                self.tile.x as usize * test_tile::W,
-                self.tile.y as usize * test_tile::H,
-            )
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (
+            test_tile::PROPERTY_TWO[self.n as usize][biti]
+                + Coordinate::new(
+                    self.tile.x as usize * test_tile::W,
+                    self.tile.y as usize * test_tile::H,
+                ),
+            false,
+        )
     }
 }
 
@@ -245,12 +251,15 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        test_tile::PROPERTY_THREE[biti]
-            + Coordinate::new(
-                self.tile.x as usize * test_tile::W,
-                self.tile.y as usize * test_tile::H,
-            )
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (
+            test_tile::PROPERTY_THREE[biti]
+                + Coordinate::new(
+                    self.tile.x as usize * test_tile::W,
+                    self.tile.y as usize * test_tile::H,
+                ),
+            false,
+        )
     }
 }
 
@@ -262,12 +271,15 @@ impl PropertyAccessor for TilePropertyFourAccessor {
     type BoolArray = [bool; 1];
     type Output = CustomBool;
 
-    fn get_bit_pos(&self, biti: usize) -> Coordinate {
-        test_tile::PROPERTY_FOUR[biti]
-            + Coordinate::new(
-                self.tile.x as usize * test_tile::W,
-                self.tile.y as usize * test_tile::H,
-            )
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (
+            test_tile::PROPERTY_FOUR[biti]
+                + Coordinate::new(
+                    self.tile.x as usize * test_tile::W,
+                    self.tile.y as usize * test_tile::H,
+                ),
+            false,
+        )
     }
 }
 

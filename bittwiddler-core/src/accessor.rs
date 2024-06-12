@@ -24,15 +24,16 @@ pub trait PropertyAccessor {
     /// Must be the friendly type of this property
     type Output: PropertyLeaf<Self::BoolArray>;
 
-    /// Must implement this. Return a coordinate for each bit of this property.
-    fn get_bit_pos(&self, biti: usize) -> Coordinate;
+    /// Must implement this. Return a coordinate and invert Y/N for each bit of this property.
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool);
 
     /// Automatically read all the bits, create a bool array, and convert it to a friendly type
     fn get(&self, bitstream: &(impl BitArray + ?Sized)) -> Self::Output {
         let mut bits: <Self::BoolArray as MustBeABoolArrayConstGenericsWorkaround>::MaybeUninitTy =
             unsafe { MaybeUninit::uninit().assume_init() };
         for biti in 0..Self::BoolArray::NBITS {
-            bits.as_mut()[biti].write(bitstream.get(self.get_bit_pos(biti)));
+            let (c, inv) = self.get_bit_pos(biti);
+            bits.as_mut()[biti].write(bitstream.get(c) ^ inv);
         }
         let bits = unsafe { mem::transmute_copy::<_, Self::BoolArray>(&bits) };
         Self::Output::from_bits(&bits)
@@ -41,7 +42,8 @@ pub trait PropertyAccessor {
     fn set(&self, bitstream: &mut (impl BitArray + ?Sized), val: Self::Output) {
         let bits = val.to_bits();
         for biti in 0..Self::BoolArray::NBITS {
-            bitstream.set(self.get_bit_pos(biti), bits.as_ref()[biti]);
+            let (c, inv) = self.get_bit_pos(biti);
+            bitstream.set(c, bits.as_ref()[biti] ^ inv);
         }
     }
 }
