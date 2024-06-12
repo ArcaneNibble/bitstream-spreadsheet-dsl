@@ -9,13 +9,13 @@ use syn::{
     ItemStruct, Lit, Meta, MetaNameValue, PathArguments, ReturnType, Type,
 };
 
-fn is_property_attr(meta: &Meta) -> bool {
+fn is_bittwiddler_attr(meta: &Meta, attr: &str) -> bool {
     if let Meta::Path(p) = meta {
         if p.leading_colon.is_none() && p.segments.len() == 2 {
             let seg0 = &p.segments[0];
             let seg1 = &p.segments[1];
             if seg0.arguments == PathArguments::None && seg1.arguments == PathArguments::None {
-                seg0.ident == "bittwiddler" && seg1.ident == "property"
+                seg0.ident == "bittwiddler" && seg1.ident == attr
             } else {
                 false
             }
@@ -52,7 +52,7 @@ pub fn bittwiddler_hierarchy_level(attr: TokenStream, item: TokenStream) -> Toke
         Ok(x) => x,
         Err(e) => return e.to_compile_error(),
     };
-    let struct_inp = match syn::parse2::<ItemStruct>(item.clone()) {
+    let mut struct_inp = match syn::parse2::<ItemStruct>(item) {
         Ok(x) => x,
         Err(e) => return e.to_compile_error(),
     };
@@ -67,36 +67,47 @@ pub fn bittwiddler_hierarchy_level(attr: TokenStream, item: TokenStream) -> Toke
     };
 
     let ident = &struct_inp.ident;
-    let (fields, fields_are_named) = match struct_inp.fields {
-        syn::Fields::Named(x) => (x.named.into_iter(), true),
-        syn::Fields::Unnamed(x) => (x.unnamed.into_iter(), false),
-        syn::Fields::Unit => (Punctuated::<Field, Comma>::new().into_iter(), false),
-    };
-    let fields_dump = fields.enumerate().map(|(field_i, f)| {
-        let field_name = if fields_are_named {
-            f.ident.as_ref().unwrap().to_string()
-        } else {
-            field_i.to_string()
+    let (fields, fields_are_named): (Box<dyn Iterator<Item = &mut Field>>, bool) =
+        match struct_inp.fields {
+            syn::Fields::Named(ref mut x) => (Box::new(x.named.iter_mut()), true),
+            syn::Fields::Unnamed(ref mut x) => (Box::new(x.unnamed.iter_mut()), false),
+            syn::Fields::Unit => (Box::new([].iter_mut()), false),
         };
-        let field_access = if fields_are_named {
-            let ident = f.ident;
-            quote! {&self.#ident}
-        } else {
-            quote! {&self.#field_i}
-        };
-        quote! {{
-            if ::bittwiddler_core::prelude::StatePiece::_should_add_piece(#field_access) {
-                ::bittwiddler_core::prelude::HumanSinkForStatePieces::add_state_piece(
-                    _dump,
-                    #field_name,
-                    &::bittwiddler_core::prelude::StatePiece::to_human_string(#field_access)
-                );
+    let fields_dump = fields
+        .enumerate()
+        .map(|(field_i, f)| {
+            for (attr_i, attr) in f.attrs.iter().enumerate() {
+                if is_bittwiddler_attr(&attr.meta, "skip") {
+                    f.attrs.remove(attr_i);
+                    return quote! {};
+                }
             }
-        }}
-    });
+
+            let field_name = if fields_are_named {
+                f.ident.as_ref().unwrap().to_string()
+            } else {
+                field_i.to_string()
+            };
+            let field_access = if fields_are_named {
+                let ident = &f.ident;
+                quote! {&self.#ident}
+            } else {
+                quote! {&self.#field_i}
+            };
+            quote! {{
+                if ::bittwiddler_core::prelude::StatePiece::_should_add_piece(#field_access) {
+                    ::bittwiddler_core::prelude::HumanSinkForStatePieces::add_state_piece(
+                        _dump,
+                        #field_name,
+                        &::bittwiddler_core::prelude::StatePiece::to_human_string(#field_access)
+                    );
+                }
+            }}
+        })
+        .collect::<Vec<_>>();
 
     quote! {
-        #item
+        #struct_inp
 
         #alloc_feature_gate
         impl ::bittwiddler_core::prelude::StatePiece for #ident {
@@ -143,6 +154,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
     };
 
     let target_ty = &impl_inp.self_ty;
+    let generics = &impl_inp.generics;
     let target_ty_ident = if let Type::Path(p) = target_ty.borrow() {
         &p.path.segments.last().unwrap().ident
     } else {
@@ -162,7 +174,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
         if let ImplItem::Fn(impl_fn) = item {
             let mut is_prop = false;
             for (attr_i, attr) in impl_fn.attrs.iter().enumerate() {
-                if is_property_attr(&attr.meta) {
+                if is_bittwiddler_attr(&attr.meta, "property") {
                     impl_fn.attrs.remove(attr_i);
                     is_prop = true;
                     break;
@@ -272,7 +284,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
         #impl_inp
 
         #alloc_feature_gate
-        impl ::bittwiddler_core::prelude::HumanLevelDynamicAccessor for #target_ty {
+        impl #generics ::bittwiddler_core::prelude::HumanLevelDynamicAccessor for #target_ty {
             fn _human_fields(&self) -> &'static [&'static ::core::primitive::str] {
                 &[
                     #(#fields_strs),*
