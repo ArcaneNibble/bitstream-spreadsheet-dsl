@@ -163,6 +163,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
     let automagic_trait_id = format_ident!("{}AutomagicRequiredFunctions", target_ty_ident);
 
     let mut prop_idx = 0usize;
+    let mut sublevel_idx = 0usize;
     let mut fields_strs = Vec::new();
     let mut sublevels_str = Vec::new();
     let mut make_subfields = Vec::new();
@@ -217,13 +218,18 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
             } else {
                 quote! {Self::#ident(#(#args_parse_bits),*)}
             };
+            let thing_idx = if is_prop {
+                quote! {#prop_idx}
+            } else {
+                quote! {#sublevel_idx}
+            };
             if is_prop {
                 make_subfields.push(quote! {
-                    #prop_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(::bittwiddler_core::prelude::BoxReexport::new(#make_obj))),
+                    #thing_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(::bittwiddler_core::prelude::BoxReexport::new(#make_obj))),
                 });
             } else {
                 make_sublevels.push(quote! {
-                    #prop_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(#make_obj)),
+                    #thing_idx => ::core::result::Result::Ok(::bittwiddler_core::prelude::BoxReexport::new(#make_obj)),
                 });
             }
 
@@ -256,7 +262,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
             let make_all_of_this_prop = if num_args > 0 {
                 let automagic_fn_ident = format_ident!("_automagic_construct_all_{}", ident);
                 quote! {
-                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(
+                    #thing_idx => ::bittwiddler_core::prelude::BoxReexport::new(
                         #automagic_trait_id::#automagic_fn_ident(self).map(|obj| {
                             #coerce
                         })
@@ -264,7 +270,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                 }
             } else {
                 quote! {
-                    #prop_idx => ::bittwiddler_core::prelude::BoxReexport::new(::core::iter::IntoIterator::into_iter([{
+                    #thing_idx => ::bittwiddler_core::prelude::BoxReexport::new(::core::iter::IntoIterator::into_iter([{
                         let obj = #make_obj;
                         #coerce
                     }])),
@@ -276,7 +282,11 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                 iter_all_sublevels.push(make_all_of_this_prop);
             }
 
-            prop_idx += 1;
+            if is_prop {
+                prop_idx += 1;
+            } else {
+                sublevel_idx += 1;
+            }
         }
     }
 
