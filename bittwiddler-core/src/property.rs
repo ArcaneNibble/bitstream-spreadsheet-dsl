@@ -159,10 +159,15 @@ macro_rules! impl_bit_prop_for_int {
         #[cfg(feature = "alloc")]
         impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; $nbits], A> for $int_ty {
             fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
-                alloc::string::ToString::to_string(self).into()
+                alloc::format!("0x{self:X}").into()
             }
             fn from_string(s: &str, _accessor: &A) -> Result<Self, ()> {
-                s.parse().map_err(|_| ())
+                if let Some(s) = s.strip_prefix("0x") {
+                    Self::from_str_radix(s, 16)
+                } else {
+                    Self::from_str_radix(s, 10)
+                }
+                .map_err(|_| ())
             }
         }
     };

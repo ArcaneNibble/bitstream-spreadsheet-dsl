@@ -34,11 +34,11 @@ fn format_sublevel_name(
             sublevel_full_name.push('=');
             sublevel_full_name.push_str(&xi.1);
         }
-        if write_dot {
-            sublevel_full_name.push_str("].");
-        } else {
-            sublevel_full_name.push(']');
-        }
+        sublevel_full_name.push(']');
+    }
+
+    if write_dot {
+        sublevel_full_name.push('.');
     }
 
     sublevel_full_name
