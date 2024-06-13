@@ -26,6 +26,13 @@ pub fn emit(prop: &BitProperty, settings: &Settings) -> TokenStream {
         quote! {std}
     };
 
+    let documentation = if let Some(doc) = &prop.documentation {
+        quote! {
+            #[doc = #doc]
+        }
+    } else {
+        TokenStream::new()
+    };
     let prop_name_ident = Ident::new(&prop.name, Span::call_site());
     let prop_var_idents = prop
         .variants
@@ -50,12 +57,21 @@ pub fn emit(prop: &BitProperty, settings: &Settings) -> TokenStream {
         .chain(prop.catchall_variant.iter())
         .enumerate()
     {
+        let documentation = if let Some(doc) = &var.documentation {
+            quote! {
+                #[doc = #doc]
+            }
+        } else {
+            TokenStream::new()
+        };
+
         let var_ident = &prop_var_idents[i];
         let field_name_str: &String = &var.name;
         if var.keep_bits {
-            prop_variants_decl.push(quote! {#var_ident([::core::primitive::bool; #num_bits])})
+            prop_variants_decl
+                .push(quote! {#documentation #var_ident([::core::primitive::bool; #num_bits])})
         } else {
-            prop_variants_decl.push(quote! {#var_ident})
+            prop_variants_decl.push(quote! {#documentation #var_ident})
         }
 
         // decode
@@ -81,7 +97,7 @@ pub fn emit(prop: &BitProperty, settings: &Settings) -> TokenStream {
         if var.keep_bits {
             var_decode_str_matches.push(quote! { #field_name_str => {
                 let mut bits = [false; #num_bits];
-                let mut chars = ::core::primitive::str::chars(bits_s);
+                let mut chars = ::core::primitive::str::chars(_bits_s);
                 for i in 0..#num_bits {
                     let b = ::core::iter::Iterator::next(&mut chars);
                     let b = ::core::option::Option::unwrap(b);
@@ -204,7 +220,7 @@ pub fn emit(prop: &BitProperty, settings: &Settings) -> TokenStream {
                 }
 
                 fn from_string(s: &str, _: &A) -> ::core::result::Result<Self, ()> {
-                    let (s, bits_s) = ::core::option::Option::unwrap_or(::core::primitive::str::split_once(s, '('), (s, ""));
+                    let (s, _bits_s) = ::core::option::Option::unwrap_or(::core::primitive::str::split_once(s, '('), (s, ""));
                     match s {
                         #(#var_decode_str_matches)*
                         _ => ::core::result::Result::Err(()),
@@ -217,6 +233,7 @@ pub fn emit(prop: &BitProperty, settings: &Settings) -> TokenStream {
     };
 
     quote! {
+        #documentation
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum #prop_name_ident {
             #(#prop_variants_decl),*

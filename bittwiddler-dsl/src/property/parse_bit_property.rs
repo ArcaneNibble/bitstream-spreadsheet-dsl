@@ -7,6 +7,7 @@ use crate::is_valid_ident;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BitProperty {
     pub name: String,
+    pub documentation: Option<String>,
     pub variants: Vec<Variant>,
     pub catchall_variant: Option<Variant>,
     pub default_variant_idx: Option<usize>,
@@ -17,6 +18,7 @@ pub struct Variant {
     pub name: String,
     pub pattern: String,
     pub keep_bits: bool,
+    pub documentation: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,6 +147,7 @@ pub fn parse<R: io::Read>(r: R) -> Result<BitProperty, TopError> {
     let mut wip_property: Option<BitProperty> = None;
     let mut lineno = 0;
     let mut pat_bits = None;
+    let mut documentation: Option<String> = None;
 
     for l in buf_r.lines() {
         lineno += 1;
@@ -157,9 +160,31 @@ pub fn parse<R: io::Read>(r: R) -> Result<BitProperty, TopError> {
             continue;
         }
 
-        if let Some((var_pat, var_name)) = l.split_once(&[' ', '\t']) {
+        if let Some(doc_line) = l.strip_prefix("///") {
+            if wip_property.is_some() {
+                return Err(ParseError::InvalidLine {
+                    lineno,
+                    line: l.to_owned(),
+                }
+                .into());
+            }
+
+            if let Some(ref mut doc) = documentation {
+                doc.push('\n');
+                doc.push_str(doc_line.trim());
+            } else {
+                documentation = Some(doc_line.trim().to_owned());
+            }
+        } else if let Some((var_pat, var_name_doc)) = l.split_once(&[' ', '\t']) {
             let var_pat = var_pat.trim();
-            let var_name = var_name.trim();
+            let var_name_doc = var_name_doc.trim();
+            // let var_name = var_name_doc.trim();
+            let (var_name, documentation) =
+                if let Some((var_name, documentation)) = var_name_doc.split_once(&[' ', '\t']) {
+                    (var_name.trim(), Some(documentation.trim().to_owned()))
+                } else {
+                    (var_name_doc, None)
+                };
 
             if let Some(wip) = wip_property.as_mut() {
                 let ParseVariantNameResult {
@@ -201,6 +226,7 @@ pub fn parse<R: io::Read>(r: R) -> Result<BitProperty, TopError> {
                     name: var_name.to_owned(),
                     pattern: var_pat.to_owned(),
                     keep_bits,
+                    documentation,
                 };
                 if var_pat == CATCHALL_PATTERN {
                     var.keep_bits = true;
@@ -237,6 +263,7 @@ pub fn parse<R: io::Read>(r: R) -> Result<BitProperty, TopError> {
 
             wip_property = Some(BitProperty {
                 name: l.to_owned(),
+                documentation: documentation.take(),
                 variants: Vec::new(),
                 catchall_variant: None,
                 default_variant_idx: None,
@@ -265,37 +292,44 @@ mod tests {
             result,
             BitProperty {
                 name: "Property1".into(),
+                documentation: None,
                 variants: vec![
                     Variant {
                         name: "ChoiceZero".into(),
                         pattern: "0000".into(),
-                        keep_bits: false
+                        keep_bits: false,
+                        documentation: None
                     },
                     Variant {
                         name: "ChoiceOne".into(),
                         pattern: "0001".into(),
-                        keep_bits: false
+                        keep_bits: false,
+                        documentation: None
                     },
                     Variant {
                         name: "ChoiceTwo".into(),
                         pattern: "0010".into(),
-                        keep_bits: false
+                        keep_bits: false,
+                        documentation: None
                     },
                     Variant {
                         name: "ChoiceThree".into(),
                         pattern: "0011".into(),
-                        keep_bits: false
+                        keep_bits: false,
+                        documentation: None
                     },
                     Variant {
                         name: "ChoiceWithX".into(),
                         pattern: "01xX".into(),
-                        keep_bits: true
+                        keep_bits: true,
+                        documentation: None
                     }
                 ],
                 catchall_variant: Some(Variant {
                     name: "CatchallChoice".into(),
                     pattern: "catchall".into(),
-                    keep_bits: true
+                    keep_bits: true,
+                    documentation: None
                 }),
                 default_variant_idx: Some(4)
             },
