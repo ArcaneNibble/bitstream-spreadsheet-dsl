@@ -157,6 +157,10 @@ impl Tile {
     pub fn property_four(&self) -> TilePropertyFourAccessor {
         TilePropertyFourAccessor { tile: self.clone() }
     }
+    #[bittwiddler::property]
+    pub fn property_five(&self) -> TilePropertyFiveAccessor {
+        TilePropertyFiveAccessor { tile: self.clone() }
+    }
 }
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
@@ -304,6 +308,29 @@ impl PropertyAccessorWithDefault for TilePropertyFourAccessor {}
 #[cfg(feature = "alloc")]
 impl PropertyAccessorWithStringConv for TilePropertyFourAccessor {}
 
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct TilePropertyFiveAccessor {
+    tile: Tile,
+}
+impl PropertyAccessor for TilePropertyFiveAccessor {
+    type BoolArray = [bool; 4];
+    type Output = u8;
+
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (
+            test_tile::PROPERTY_FIVE[biti]
+                + Coordinate::new(
+                    self.tile.x as usize * test_tile::W,
+                    self.tile.y as usize * test_tile::H,
+                ),
+            false,
+        )
+    }
+}
+impl PropertyAccessorWithDefault for TilePropertyFiveAccessor {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TilePropertyFiveAccessor {}
+
 #[cfg(all(test, feature = "alloc"))]
 mod tests {
     use super::*;
@@ -415,7 +442,8 @@ mod tests {
 
     #[test]
     fn test_human() {
-        let bitstream = TestBitstream { bits: [false; 256] };
+        let mut bitstream = TestBitstream { bits: [false; 256] };
+        bittwiddler_core::prelude::BitArray::set(&mut bitstream, Coordinate::new(1, 1), true);
         let mut out = Vec::new();
         bittwiddler_textfile::write(&mut out, &bitstream).unwrap();
 

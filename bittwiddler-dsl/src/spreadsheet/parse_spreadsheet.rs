@@ -238,19 +238,22 @@ mod tests {
 
         let tile = &result[0];
         assert_eq!(tile.name, "test_tile");
-        assert_eq!(tile.spreadsheet_sym_map.len(), 4);
+        assert_eq!(tile.spreadsheet_sym_map.len(), 5);
 
         let p1_map = tile.spreadsheet_sym_map.get("P1").unwrap();
         assert_eq!(p1_map, "PROPERTY_ONE");
 
-        let p1_map = tile.spreadsheet_sym_map.get("P2").unwrap();
-        assert_eq!(p1_map, "PROPERTY_TWO");
+        let p2_map = tile.spreadsheet_sym_map.get("P2").unwrap();
+        assert_eq!(p2_map, "PROPERTY_TWO");
 
-        let p1_map = tile.spreadsheet_sym_map.get("P3").unwrap();
-        assert_eq!(p1_map, "PROPERTY_THREE");
+        let p3_map = tile.spreadsheet_sym_map.get("P3").unwrap();
+        assert_eq!(p3_map, "PROPERTY_THREE");
 
-        let p1_map = tile.spreadsheet_sym_map.get("P4").unwrap();
-        assert_eq!(p1_map, "PROPERTY_FOUR");
+        let p4_map = tile.spreadsheet_sym_map.get("P4").unwrap();
+        assert_eq!(p4_map, "PROPERTY_FOUR");
+
+        let p5_map = tile.spreadsheet_sym_map.get("P5").unwrap();
+        assert_eq!(p5_map, "PROPERTY_FIVE");
 
         let grid = &tile.grid;
         assert_eq!(
@@ -278,7 +281,28 @@ mod tests {
                         bit_idx: 3,
                     }),
                 ],
-                vec![None, None, None, None],
+                vec![
+                    Some(TileBit {
+                        spreadsheet_sym: "P5".into(),
+                        instance_address: None,
+                        bit_idx: 0,
+                    }),
+                    Some(TileBit {
+                        spreadsheet_sym: "P5".into(),
+                        instance_address: None,
+                        bit_idx: 1,
+                    }),
+                    Some(TileBit {
+                        spreadsheet_sym: "P5".into(),
+                        instance_address: None,
+                        bit_idx: 2,
+                    }),
+                    Some(TileBit {
+                        spreadsheet_sym: "P5".into(),
+                        instance_address: None,
+                        bit_idx: 3,
+                    }),
+                ],
                 vec![
                     Some(TileBit {
                         spreadsheet_sym: "P2".into(),

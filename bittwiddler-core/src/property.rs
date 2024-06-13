@@ -112,7 +112,26 @@ impl PropertyLeaf<[bool; 1]> for bool {
     }
 }
 #[cfg(feature = "alloc")]
-impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; 1], A> for bool {}
+impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; 1], A> for bool {
+    fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
+        if *self {
+            "true".into()
+        } else {
+            "false".into()
+        }
+    }
+
+    fn from_string(s: &str, _accessor: &A) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        match s {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err(()),
+        }
+    }
+}
 
 macro_rules! impl_bit_prop_for_int {
     ($nbits:expr, $int_ty:ty) => {
@@ -138,7 +157,14 @@ macro_rules! impl_bit_prop_for_int {
             }
         }
         #[cfg(feature = "alloc")]
-        impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; $nbits], A> for $int_ty {}
+        impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; $nbits], A> for $int_ty {
+            fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
+                alloc::string::ToString::to_string(self).into()
+            }
+            fn from_string(s: &str, _accessor: &A) -> Result<Self, ()> {
+                s.parse().map_err(|_| ())
+            }
+        }
     };
 }
 
