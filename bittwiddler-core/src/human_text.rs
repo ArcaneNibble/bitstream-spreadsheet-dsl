@@ -9,9 +9,9 @@ use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::string::ToString;
 
-use crate::accessor::PropertyAccessorWithStringConv;
+use crate::accessor::{PropertyAccessorWithDefault, PropertyAccessorWithStringConv};
 use crate::bit_access::BitArray;
-use crate::property::PropertyLeafWithStringConv;
+use crate::property::{PropertyLeafWithDefault, PropertyLeafWithStringConv};
 
 /// Trait to be implemented by human text *writer* software to accept
 /// "pieces of state" at _this_ hierarchy sublevel only
@@ -56,9 +56,11 @@ pub trait PropertyAccessorDyn: HumanLevelThatHasState {
     fn _human_string_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
     fn _human_string_set(&self, bitstream: &mut dyn BitArray, val: &str) -> Result<(), ()>;
 }
-impl<A: PropertyAccessorWithStringConv + HumanLevelThatHasState> PropertyAccessorDyn for Box<A>
+impl<A: PropertyAccessorWithStringConv + PropertyAccessorWithDefault + HumanLevelThatHasState>
+    PropertyAccessorDyn for Box<A>
 where
-    A::Output: PropertyLeafWithStringConv<A::BoolArray, A>,
+    A::Output:
+        PropertyLeafWithStringConv<A::BoolArray, A> + PropertyLeafWithDefault<A::BoolArray, A>,
 {
     fn _human_is_at_default(&self, bitstream: &dyn BitArray) -> bool {
         self.is_at_default(bitstream)

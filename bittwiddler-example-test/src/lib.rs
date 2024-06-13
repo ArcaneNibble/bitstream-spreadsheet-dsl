@@ -132,6 +132,9 @@ impl PropertyAccessor for DummySublevelField {
         (Coordinate::new(15, 15), false)
     }
 }
+impl PropertyAccessorWithDefault for DummySublevelField {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for DummySublevelField {}
 
 #[bittwiddler_properties(alloc_feature_gate = "alloc")]
 impl Tile {
@@ -175,6 +178,9 @@ impl PropertyAccessor for TilePropertyOneAccessor {
         )
     }
 }
+impl PropertyAccessorWithDefault for TilePropertyOneAccessor {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TilePropertyOneAccessor {}
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyTwoAccessor {
@@ -196,6 +202,9 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
         )
     }
 }
+impl PropertyAccessorWithDefault for TilePropertyTwoAccessor {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TilePropertyTwoAccessor {}
 
 #[derive(PartialEq, Eq)]
 pub struct CustomBool(bool);
@@ -268,6 +277,9 @@ impl PropertyAccessor for TilePropertyThreeAccessor {
         )
     }
 }
+impl PropertyAccessorWithDefault for TilePropertyThreeAccessor {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TilePropertyThreeAccessor {}
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct TilePropertyFourAccessor {
@@ -288,6 +300,9 @@ impl PropertyAccessor for TilePropertyFourAccessor {
         )
     }
 }
+impl PropertyAccessorWithDefault for TilePropertyFourAccessor {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TilePropertyFourAccessor {}
 
 #[cfg(all(test, feature = "alloc"))]
 mod tests {

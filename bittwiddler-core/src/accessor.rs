@@ -11,9 +11,9 @@ extern crate alloc;
 use alloc::borrow::Cow;
 
 use crate::bit_access::{BitArray, Coordinate};
-use crate::property::PropertyLeaf;
 #[cfg(feature = "alloc")]
-use crate::property::{PropertyLeafWithDefault, PropertyLeafWithStringConv};
+use crate::property::PropertyLeafWithStringConv;
+use crate::property::{PropertyLeaf, PropertyLeafWithDefault};
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
 /// This trait needs to be implemented on a type holding a complete package of state
@@ -48,6 +48,19 @@ pub trait PropertyAccessor {
     }
 }
 
+/// Allows querying if the setting at a location is default or not
+///
+/// This is used for creating human-readable files.
+pub trait PropertyAccessorWithDefault: PropertyAccessor
+where
+    Self::Output: PropertyLeafWithDefault<Self::BoolArray, Self>,
+{
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        val.is_default(self)
+    }
+}
+
 /// Allows interacting with this property using strings instead of typed objects
 ///
 /// This is used for creating human-readable files.
@@ -56,10 +69,6 @@ pub trait PropertyAccessorWithStringConv: PropertyAccessor
 where
     Self::Output: PropertyLeafWithStringConv<Self::BoolArray, Self>,
 {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        val.is_default(self)
-    }
     fn get_as_string(&self, bitstream: &(impl BitArray + ?Sized)) -> Cow<'static, str> {
         let val = self.get(bitstream);
         val.to_string(self)
@@ -73,9 +82,4 @@ where
         self.set(bitstream, val);
         Ok(())
     }
-}
-#[cfg(feature = "alloc")]
-impl<A: PropertyAccessor> PropertyAccessorWithStringConv for A where
-    Self::Output: PropertyLeafWithStringConv<Self::BoolArray, Self>
-{
 }

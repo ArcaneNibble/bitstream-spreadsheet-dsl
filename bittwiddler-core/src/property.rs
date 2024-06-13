@@ -14,7 +14,6 @@ use alloc::borrow::Cow;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
-#[cfg(feature = "alloc")]
 use crate::accessor::PropertyAccessor;
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
@@ -32,7 +31,6 @@ pub trait PropertyLeaf<T: MustBeABoolArrayConstGenericsWorkaround> {
 /// This is used for creating human-readable files.
 ///
 /// By default this is auto-implemented for anything implementing [Default] (and [PartialEq])
-#[cfg(feature = "alloc")]
 #[allow(private_bounds)]
 pub trait PropertyLeafWithDefault<
     T: MustBeABoolArrayConstGenericsWorkaround,
@@ -41,7 +39,6 @@ pub trait PropertyLeafWithDefault<
 {
     fn is_default(&self, accessor: &A) -> bool;
 }
-#[cfg(feature = "alloc")]
 impl<
         B: MustBeABoolArrayConstGenericsWorkaround,
         T: PropertyLeaf<B> + Default + PartialEq,
@@ -64,7 +61,7 @@ impl<
 pub trait PropertyLeafWithStringConv<
     T: MustBeABoolArrayConstGenericsWorkaround,
     A: PropertyAccessor + ?Sized,
->: PropertyLeaf<T> + PropertyLeafWithDefault<T, A>
+>: PropertyLeaf<T>
 {
     fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
         let bits = self.to_bits();
