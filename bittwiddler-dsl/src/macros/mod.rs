@@ -181,6 +181,14 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                     break;
                 }
             }
+            let mut is_conditional = false;
+            for (attr_i, attr) in impl_fn.attrs.iter().enumerate() {
+                if is_bittwiddler_attr(&attr.meta, "conditional") {
+                    impl_fn.attrs.remove(attr_i);
+                    is_conditional = true;
+                    break;
+                }
+            }
 
             let mut num_args = impl_fn.sig.inputs.len();
             let mut has_self = false;
@@ -234,7 +242,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
             }
 
             // this needs to be impl-ed by user
-            if num_args > 0 {
+            if is_conditional || num_args > 0 {
                 let automagic_fn_ident = format_ident!("_automagic_construct_all_{}", ident);
                 automagic_trait_fns.push(quote! {
                     fn #automagic_fn_ident(&self) -> impl ::core::iter::Iterator<Item = #output_ty>;
@@ -259,7 +267,7 @@ pub fn bittwiddler_properties(attr: TokenStream, item: TokenStream) -> TokenStre
                     >
                 }
             };
-            let make_all_of_this_prop = if num_args > 0 {
+            let make_all_of_this_prop = if is_conditional || num_args > 0 {
                 let automagic_fn_ident = format_ident!("_automagic_construct_all_{}", ident);
                 quote! {
                     #thing_idx => ::bittwiddler_core::prelude::BoxReexport::new(
