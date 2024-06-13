@@ -66,7 +66,7 @@ pub trait PropertyLeafWithStringConv<
     fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
         let bits = self.to_bits();
         let mut s = String::with_capacity(T::NBITS);
-        for i in (0..T::NBITS).rev() {
+        for i in 0..T::NBITS {
             if bits.as_ref()[i] {
                 s.push('1');
             } else {
@@ -85,7 +85,7 @@ pub trait PropertyLeafWithStringConv<
 
         // safety: T::MaybeUninitTy is an array of MaybeUninit which doesn't require init
         let mut bits: T::MaybeUninitTy = unsafe { MaybeUninit::uninit().assume_init() };
-        for (i, c) in s.chars().rev().enumerate() {
+        for (i, c) in s.chars().enumerate() {
             if c == '1' {
                 bits.as_mut()[i].write(true);
             } else if c == '0' {
