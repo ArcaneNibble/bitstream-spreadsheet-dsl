@@ -52,6 +52,7 @@ pub trait HumanLevelThatHasState {
 ///
 /// You shouldn't need to implement this, the default impl for [Box] should be sufficient.
 pub trait PropertyAccessorDyn: HumanLevelThatHasState {
+    fn _human_is_at_default(&self, bitstream: &dyn BitArray) -> bool;
     fn _human_string_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str>;
     fn _human_string_set(&self, bitstream: &mut dyn BitArray, val: &str) -> Result<(), ()>;
 }
@@ -59,6 +60,9 @@ impl<A: PropertyAccessorWithStringConv + HumanLevelThatHasState> PropertyAccesso
 where
     A::Output: PropertyLeafWithStringConv<A::BoolArray, A>,
 {
+    fn _human_is_at_default(&self, bitstream: &dyn BitArray) -> bool {
+        self.is_at_default(bitstream)
+    }
     fn _human_string_get(&self, bitstream: &dyn BitArray) -> Cow<'static, str> {
         self.get_as_string(bitstream)
     }

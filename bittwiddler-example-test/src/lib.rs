@@ -197,6 +197,7 @@ impl PropertyAccessor for TilePropertyTwoAccessor {
     }
 }
 
+#[derive(PartialEq, Eq)]
 pub struct CustomBool(bool);
 impl PropertyLeaf<[bool; 1]> for CustomBool {
     fn from_bits(bits: &[bool; 1]) -> Self {
@@ -205,6 +206,11 @@ impl PropertyLeaf<[bool; 1]> for CustomBool {
 
     fn to_bits(&self) -> [bool; 1] {
         [self.0]
+    }
+}
+impl Default for CustomBool {
+    fn default() -> Self {
+        Self(true)
     }
 }
 #[cfg(feature = "alloc")]

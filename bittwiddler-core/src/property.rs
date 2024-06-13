@@ -27,6 +27,31 @@ pub trait PropertyLeaf<T: MustBeABoolArrayConstGenericsWorkaround> {
     fn to_bits(&self) -> T;
 }
 
+/// Trait for checking whether or not this field is at its default value
+///
+/// This is used for creating human-readable files.
+///
+/// By default this is auto-implemented for anything implementing [Default] (and [PartialEq])
+#[cfg(feature = "alloc")]
+#[allow(private_bounds)]
+pub trait PropertyLeafWithDefault<
+    T: MustBeABoolArrayConstGenericsWorkaround,
+    A: PropertyAccessor + ?Sized,
+>: PropertyLeaf<T>
+{
+    fn is_default(&self, accessor: &A) -> bool;
+}
+impl<
+        B: MustBeABoolArrayConstGenericsWorkaround,
+        T: PropertyLeaf<B> + Default + PartialEq,
+        A: PropertyAccessor + ?Sized,
+    > PropertyLeafWithDefault<B, A> for T
+{
+    fn is_default(&self, _accessor: &A) -> bool {
+        self == &T::default()
+    }
+}
+
 /// Trait for converting between property and a string
 ///
 /// This is used for creating human-readable files.
@@ -38,7 +63,7 @@ pub trait PropertyLeaf<T: MustBeABoolArrayConstGenericsWorkaround> {
 pub trait PropertyLeafWithStringConv<
     T: MustBeABoolArrayConstGenericsWorkaround,
     A: PropertyAccessor + ?Sized,
->: PropertyLeaf<T>
+>: PropertyLeaf<T> + PropertyLeafWithDefault<T, A>
 {
     fn to_string(&self, _accessor: &A) -> Cow<'static, str> {
         let bits = self.to_bits();

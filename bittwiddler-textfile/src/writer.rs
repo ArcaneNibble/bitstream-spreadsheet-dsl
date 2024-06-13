@@ -60,6 +60,10 @@ fn write_recurse<W: io::Write>(
 
     for (field_idx, field_name) in level._human_fields().iter().enumerate() {
         for field_obj in level._human_construct_all_fields(field_idx) {
+            let is_default = field_obj._human_is_at_default(bitstream);
+            if is_default {
+                continue;
+            }
             let field_full_name = format_sublevel_name(prefix, field_name, &*field_obj, false);
             let value_str = field_obj._human_string_get(bitstream);
             write!(w, "{} = {}\n", field_full_name, value_str)?;

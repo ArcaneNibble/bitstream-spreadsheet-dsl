@@ -11,9 +11,9 @@ extern crate alloc;
 use alloc::borrow::Cow;
 
 use crate::bit_access::{BitArray, Coordinate};
-use crate::property::PropertyLeaf;
 #[cfg(feature = "alloc")]
 use crate::property::PropertyLeafWithStringConv;
+use crate::property::{PropertyLeaf, PropertyLeafWithDefault};
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
 /// This trait needs to be implemented on a type holding a complete package of state
@@ -56,6 +56,10 @@ pub trait PropertyAccessorWithStringConv: PropertyAccessor
 where
     Self::Output: PropertyLeafWithStringConv<Self::BoolArray, Self>,
 {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        val.is_default(self)
+    }
     fn get_as_string(&self, bitstream: &(impl BitArray + ?Sized)) -> Cow<'static, str> {
         let val = self.get(bitstream);
         val.to_string(self)
