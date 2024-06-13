@@ -164,6 +164,8 @@ macro_rules! impl_bit_prop_for_int {
             fn from_string(s: &str, _accessor: &A) -> Result<Self, ()> {
                 if let Some(s) = s.strip_prefix("0x") {
                     Self::from_str_radix(s, 16)
+                } else if let Some(s) = s.strip_prefix("0b") {
+                    Self::from_str_radix(s, 2)
                 } else {
                     Self::from_str_radix(s, 10)
                 }
