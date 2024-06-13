@@ -11,9 +11,9 @@ extern crate alloc;
 use alloc::borrow::Cow;
 
 use crate::bit_access::{BitArray, Coordinate};
+use crate::property::PropertyLeaf;
 #[cfg(feature = "alloc")]
-use crate::property::PropertyLeafWithStringConv;
-use crate::property::{PropertyLeaf, PropertyLeafWithDefault};
+use crate::property::{PropertyLeafWithDefault, PropertyLeafWithStringConv};
 use crate::workarounds::MustBeABoolArrayConstGenericsWorkaround;
 
 /// This trait needs to be implemented on a type holding a complete package of state

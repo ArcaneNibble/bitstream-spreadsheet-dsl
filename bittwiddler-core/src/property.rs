@@ -41,6 +41,7 @@ pub trait PropertyLeafWithDefault<
 {
     fn is_default(&self, accessor: &A) -> bool;
 }
+#[cfg(feature = "alloc")]
 impl<
         B: MustBeABoolArrayConstGenericsWorkaround,
         T: PropertyLeaf<B> + Default + PartialEq,
