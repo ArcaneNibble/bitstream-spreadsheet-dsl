@@ -126,8 +126,8 @@ impl<A: PropertyAccessor> PropertyLeafWithStringConv<[bool; 1], A> for bool {
         Self: Sized,
     {
         match s {
-            "true" => Ok(true),
-            "false" => Ok(false),
+            "true" | "1" => Ok(true),
+            "false" | "0" => Ok(false),
             _ => Err(()),
         }
     }
